@@ -1,4 +1,4 @@
-FROM registry.redhat.io/rhel10/rhel-bootc:10.2
+FROM registry.redhat.io/rhel9/rhel-bootc:9.8
 ARG USHIFT_VER=4.22
 
 # ── Subscription + MicroShift repos ──────────────────────────────────
@@ -18,8 +18,8 @@ RUN --mount=type=secret,id=rhsm-user,target=/run/secrets/rhsm-user \
       --username="$(cat /run/secrets/rhsm-user)" \
       --password="$(cat /run/secrets/rhsm-pass)" && \
     dnf config-manager --set-enabled \
-      rhocp-${USHIFT_VER}-for-rhel-10-$(uname -m)-rpms \
-      fast-datapath-for-rhel-10-$(uname -m)-rpms && \
+      rhocp-${USHIFT_VER}-for-rhel-9-$(uname -m)-rpms \
+      fast-datapath-for-rhel-9-$(uname -m)-rpms && \
     dnf install -y \
       firewalld \
       microshift \
