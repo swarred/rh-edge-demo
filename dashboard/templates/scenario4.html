@@ -174,10 +174,10 @@
   </div>
 </header>
 
-<main class="main-layout" style="grid-template-columns: 2fr 400px;">
+<main class="main-layout" style="grid-template-columns: 1.5fr 480px;">
 
   <!-- ── LEFT: Globe / orbital view ────────────────────────────────── -->
-  <section class="panel panel-scene" style="padding:8px 4px 4px;">
+  <section class="panel panel-scene" style="padding:8px 4px 4px; background:#020c18;">
 
     <div class="scene-header">
       <span class="scene-label">PWSA LEO CONSTELLATION — ORBITAL VIEW</span>
@@ -349,16 +349,16 @@
                   opacity="0" style="transition:opacity 0.5s"/>
         </g>
 
-        <!-- Dissemination timer -->
-        <text id="dissem-timer" x="230" y="295" class="dissem-timer" style="display:none"></text>
-        <text id="dissem-label" x="230" y="308" class="dissem-label" style="display:none">
-          TRACK DISSEMINATION
-        </text>
-        <text id="complete-txt" x="230" y="298" class="complete-flash">
-          ✓ ALL NODES — JOINT FORCE NOTIFIED IN 7.8s
-        </text>
+        <!-- timer moved to HTML below SVG -->
 
       </svg>
+    </div>
+
+    <!-- Dissemination status -->
+    <div id="dissem-bar" style="text-align:center; font-family:var(--font-m); min-height:28px; padding:4px 0;">
+      <span id="dissem-timer" style="font-size:20px; font-weight:bold; color:#39ff7a; display:none;"></span>
+      <span id="dissem-label" style="font-size:9px; color:#555; display:none; display:block; letter-spacing:0.1em;">TRACK DISSEMINATION</span>
+      <span id="complete-txt" style="font-size:11px; font-weight:bold; color:#39ff7a; opacity:0; transition:opacity 0.8s; letter-spacing:0.05em;">✓ ALL NODES — JOINT FORCE NOTIFIED IN 7.8s</span>
     </div>
 
     <!-- Trigger controls -->
@@ -463,15 +463,15 @@ Waiting for orbital pass...</pre>
 // to ~340° (right) over the course of the scenario
 var SAT_CX = 230, SAT_CY = 72, SAT_RX = 195, SAT_RY = 38;
 
-// Map elapsed → angle in degrees (0=right, 90=bottom of ellipse)
+// Satellite orbital angle. Ellipse: cx=230,cy=72,rx=195,ry=38
+// AOI is at globe x=302. Satellite is directly above AOI when:
+//   230 + 195*cos(angle) = 302  →  angle ≈ 291.6°
+// We want that to happen at t=3s, so:
+//   start(280°) + (3/28)*108° = 291.6° ✓
 function satAngle(elapsed) {
-  // Before trigger: angle 215 (left side, approaching)
-  // At t=0: start moving
-  // At t=3: near zenith (270deg = bottom of ellipse = closest to earth = over AOI)
-  // At t=23: angle 325 (right side, departing)
-  if (elapsed === null) return 215;
+  if (elapsed === null) return 272; // pre-trigger: left of AOI, approaching
   var pct = Math.min(1, elapsed / 28);
-  return 215 + pct * 110; // 215 → 325
+  return 280 + pct * 108; // 280° → 388° (≈28°), over AOI at t≈3
 }
 
 function satPos(elapsed) {
@@ -599,7 +599,15 @@ function updateAll(data) {
     if (el) el.className = 'hgv-track' + (data.sat_over_aoi && !data.complete ? ' visible' : '');
   });
 
-  // RHSI links
+  // RHSI links — originate from satellite's current position
+  var satP = satPos(data.triggered ? e : null);
+  ['pacaf','burke','jtac','dome'].forEach(function(id) {
+    var line = document.getElementById('rhsi-' + id);
+    if (line) {
+      line.setAttribute('x1', satP.x.toFixed(0));
+      line.setAttribute('y1', satP.y.toFixed(0));
+    }
+  });
   setRhsiLink('pacaf', data.node_pacaf);
   setRhsiLink('burke', data.node_burke);
   setRhsiLink('jtac',  data.node_jtac);
@@ -617,7 +625,7 @@ function updateAll(data) {
   setAcm('jtac',  data.node_jtac);
   setAcm('dome',  data.node_dome);
 
-  // Dissemination timer
+  // Dissemination timer (HTML elements)
   var timerEl = document.getElementById('dissem-timer');
   var labelEl = document.getElementById('dissem-label');
   var compEl  = document.getElementById('complete-txt');
@@ -625,21 +633,20 @@ function updateAll(data) {
   if (data.complete) {
     if (timerEl) timerEl.style.display = 'none';
     if (labelEl) labelEl.style.display = 'none';
-    if (compEl)  compEl.className = 'complete-flash visible';
-  } else if (data.rhsi_up && !data.complete) {
-    var dissemStart = 9; // rhsi_up at t=9
-    var dissemElapsed = Math.max(0, e - dissemStart);
+    if (compEl)  { compEl.style.opacity = '1'; compEl.style.display = ''; }
+  } else if (data.rhsi_up) {
+    var dissemElapsed = Math.max(0, e - 9);
     if (timerEl) {
       timerEl.style.display = '';
       timerEl.textContent = dissemElapsed.toFixed(1) + 's';
-      timerEl.setAttribute('fill', dissemElapsed > 6 ? '#39ff7a' : '#ffcc00');
+      timerEl.style.color = dissemElapsed > 6 ? '#39ff7a' : '#ffcc00';
     }
-    if (labelEl) labelEl.style.display = '';
-    if (compEl)  compEl.className = 'complete-flash';
+    if (labelEl) { labelEl.style.display = 'block'; }
+    if (compEl)  { compEl.style.opacity = '0'; }
   } else {
     if (timerEl) timerEl.style.display = 'none';
     if (labelEl) labelEl.style.display = 'none';
-    if (compEl)  compEl.className = 'complete-flash';
+    if (compEl)  { compEl.style.opacity = '0'; }
   }
 
   // Logs
