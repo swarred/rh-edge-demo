@@ -152,9 +152,11 @@ html, body { height: 100%; background: var(--bg); color: var(--text);
 .static-line { stroke: var(--red); stroke-width: 2;
                animation: static-flicker .15s infinite; }
 @keyframes static-flicker { 0%,100%{opacity:1} 50%{opacity:.2} }
-.ew-label { fill: var(--red); font-family: var(--font-m); font-size: 8px;
-            text-anchor: middle; font-weight: bold;
-            animation: static-flicker .5s infinite; }
+.ew-label { fill: #ffffff; font-family: var(--font-m); font-size: 11px;
+            text-anchor: middle; font-weight: bold; letter-spacing: 0.05em;
+            paint-order: stroke; stroke: #000000; stroke-width: 4px; stroke-linejoin: round;
+            animation: ew-pulse 1.2s ease-in-out infinite; }
+@keyframes ew-pulse { 0%,100%{opacity:1} 50%{opacity:.6} }
 
 .radio-label { text-align: center; margin-top: 8px; }
 .radio-mode-text { font-family: var(--font-m); font-size: 10px; color: var(--muted);
