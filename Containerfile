@@ -43,11 +43,11 @@ RUN pip3 install --no-cache-dir \
 
 # ── Skupper / RHSI runtime ────────────────────────────────────────────
 # Copy skupper router binary + Python runtime from skupper-router image
-COPY --from=registry.redhat.io/service-interconnect/skupper-router-rhel9:latest \
+COPY --from=registry.redhat.io/service-interconnect/skupper-router-rhel9:3.4.2 \
      /usr/sbin/skrouterd /usr/sbin/skrouterd
-COPY --from=registry.redhat.io/service-interconnect/skupper-router-rhel9:latest \
+COPY --from=registry.redhat.io/service-interconnect/skupper-router-rhel9:3.4.2 \
      /usr/lib/skupper-router /usr/lib/skupper-router
-COPY --from=registry.redhat.io/service-interconnect/skupper-router-rhel9:latest \
+COPY --from=registry.redhat.io/service-interconnect/skupper-router-rhel9:3.4.2 \
      /usr/lib64/python3.9 /usr/lib64/python3.9
 
 # ── Ollama (local LLM for offline AI) ────────────────────────────────
