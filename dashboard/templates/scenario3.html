@@ -271,14 +271,17 @@
           <g id="rec-box" class="rec-box">
             <rect x="110" y="62" width="220" height="50" rx="3"
                   fill="rgba(0,0,0,0.82)" stroke="#ff8c00" stroke-width="1"/>
-            <text x="220" y="78" class="rec-label" text-anchor="middle">
-              AI RECOMMENDATION — phi-4-mini — 187ms
+            <text x="220" y="75" class="rec-label" text-anchor="middle">
+              phi-4-mini · FUSED: CCA + GND_RADAR + GOLDEN_DOME → DIRECTIVE
             </text>
-            <text x="220" y="93" class="rec-text" text-anchor="middle" font-size="11">
+            <text x="220" y="90" class="rec-text" text-anchor="middle" font-size="12">
               BREAK LEFT · 4G · CHAFF ×2
             </text>
-            <text x="220" y="106" class="rec-label" text-anchor="middle" fill="#39ff7a">
-              CONFIDENCE: 97% · CCA SWARM: READY
+            <text x="220" y="102" class="rec-label" text-anchor="middle">
+              INFERENCE: 187ms · CONFIDENCE: 97%
+            </text>
+            <text x="220" y="113" class="rec-label" text-anchor="middle" fill="#39ff7a">
+              CCA SWARM STANDING BY — AWAITING PILOT APPROVAL
             </text>
           </g>
 
@@ -512,16 +515,20 @@ function aiLog(events, recReady, approved) {
 
   src.textContent = recReady ? 'COMPLETE' : 'RUNNING';
   var html = 'Model: phi-4-mini (quantized, onboard)\n';
-  html += 'Sources fusing: CCA + GND_RADAR + GOLDEN_DOME\n\n';
+  html += 'Runtime: RHIVOS edge · Size: 47.2 MB\n\n';
+  html += 'Fusing inputs:\n';
+  html += '  CCA swarm     → 6 drone track feeds\n';
+  html += '  GND radar     → closure rate, intercept window\n';
+  html += '  Golden Dome   → threat classification, salvo count\n\n';
   if (recReady) {
-    html += '<span class="t-ok">Inference: COMPLETE — 187ms</span>\n';
-    html += '<span class="t-bold">RECOMMEND: BREAK LEFT · 4G · CHAFF ×2</span>\n';
-    html += '<span class="t-ok">Confidence: 97%</span>';
+    html += '<span class="t-ok">Inference complete — 187ms</span>\n\n';
+    html += '<span class="t-bold">Fused directive: BREAK LEFT · 4G · CHAFF ×2</span>\n';
+    html += '<span class="t-ok">Confidence: 97% · CCA swarm: READY</span>';
     if (approved) {
-      html += '\n\n<span class="t-changed">APPROVED by pilot — CCA swarm executing</span>';
+      html += '\n\n<span class="t-changed">Pilot approved — CCA swarm executing directive</span>';
     }
   } else {
-    html += '<span class="t-changed">Processing... fusing 3 data sources</span>';
+    html += '<span class="t-changed">Fusing 3 data sources → generating directive...</span>';
   }
   el.innerHTML = html;
 }
