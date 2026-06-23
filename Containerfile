@@ -1,13 +1,23 @@
 FROM registry.redhat.io/rhel10/rhel-bootc:10.2
 ARG USHIFT_VER=4.22
 
-# ── MicroShift repos ──────────────────────────────────────────────────
-RUN dnf config-manager --set-enabled \
+# ── Subscription + MicroShift repos ──────────────────────────────────
+# Credentials injected at build time via --secret; never stored in image.
+# Build with:
+#   sudo podman build \
+#     --authfile ~/pull-secret.json \
+#     --secret id=rhsm-org,src=/path/to/org-id.txt \
+#     --secret id=rhsm-key,src=/path/to/activation-key.txt \
+#     -t localhost/rh-edge-node:latest .
+RUN --mount=type=secret,id=rhsm-org,target=/run/secrets/rhsm-org \
+    --mount=type=secret,id=rhsm-key,target=/run/secrets/rhsm-key \
+    subscription-manager register \
+      --org="$(cat /run/secrets/rhsm-org)" \
+      --activationkey="$(cat /run/secrets/rhsm-key)" && \
+    dnf config-manager --set-enabled \
       rhocp-${USHIFT_VER}-for-rhel-10-$(uname -m)-rpms \
-      fast-datapath-for-rhel-10-$(uname -m)-rpms
-
-# ── Base packages ─────────────────────────────────────────────────────
-RUN dnf install -y \
+      fast-datapath-for-rhel-10-$(uname -m)-rpms && \
+    dnf install -y \
       firewalld \
       microshift \
       microshift-olm \
@@ -16,6 +26,7 @@ RUN dnf install -y \
       python3-pip \
       jq \
       curl && \
+    subscription-manager unregister && \
     dnf clean all
 
 # ── Python deps for identity-service and EDA ─────────────────────────
