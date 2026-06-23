@@ -2,18 +2,22 @@ FROM registry.redhat.io/rhel10/rhel-bootc:10.2
 ARG USHIFT_VER=4.22
 
 # ── Subscription + MicroShift repos ──────────────────────────────────
-# Credentials injected at build time via --secret; never stored in image.
+# Red Hat credentials injected at build time via --secret.
+# Credentials never written into any image layer — container unregisters
+# itself before dnf clean all.
+#
 # Build with:
 #   sudo podman build \
-#     --authfile ~/pull-secret.json \
-#     --secret id=rhsm-org,src=/path/to/org-id.txt \
-#     --secret id=rhsm-key,src=/path/to/activation-key.txt \
+#     --authfile .creds/pull-secret.json \
+#     --secret id=rhsm-user,src=.creds/rhsm-user.txt \
+#     --secret id=rhsm-pass,src=.creds/rhsm-pass.txt \
 #     -t localhost/rh-edge-node:latest .
-RUN --mount=type=secret,id=rhsm-org,target=/run/secrets/rhsm-org \
-    --mount=type=secret,id=rhsm-key,target=/run/secrets/rhsm-key \
+RUN --mount=type=secret,id=rhsm-user,target=/run/secrets/rhsm-user \
+    --mount=type=secret,id=rhsm-pass,target=/run/secrets/rhsm-pass \
     subscription-manager register \
-      --org="$(cat /run/secrets/rhsm-org)" \
-      --activationkey="$(cat /run/secrets/rhsm-key)" && \
+      --username="$(cat /run/secrets/rhsm-user)" \
+      --password="$(cat /run/secrets/rhsm-pass)" \
+      --auto-attach && \
     dnf config-manager --set-enabled \
       rhocp-${USHIFT_VER}-for-rhel-10-$(uname -m)-rpms \
       fast-datapath-for-rhel-10-$(uname -m)-rpms && \
