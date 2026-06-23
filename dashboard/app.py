@@ -130,7 +130,7 @@ def api_trigger():
             "msg": "enforce_local playbook starting on rh-edge-node",
             "level": "info",
         })
-    # Tell identity service to switch to LOCAL mode
+    # Tell identity service to switch to LOCAL mode and re-issue tokens at 3600s TTL
     try:
         data = json.dumps({"mode": "LOCAL"}).encode()
         req = urllib.request.Request(
@@ -140,6 +140,10 @@ def api_trigger():
             method="POST",
         )
         urllib.request.urlopen(req, timeout=2)
+        urllib.request.urlopen(
+            urllib.request.Request(f"{IDENTITY_URL}/operators/auth-all", method="POST"),
+            timeout=2,
+        )
     except Exception:
         pass
     return jsonify({"ok": True, "mode": "LOCAL"})
