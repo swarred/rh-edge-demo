@@ -16,8 +16,7 @@ RUN --mount=type=secret,id=rhsm-user,target=/run/secrets/rhsm-user \
     --mount=type=secret,id=rhsm-pass,target=/run/secrets/rhsm-pass \
     subscription-manager register \
       --username="$(cat /run/secrets/rhsm-user)" \
-      --password="$(cat /run/secrets/rhsm-pass)" \
-      --auto-attach && \
+      --password="$(cat /run/secrets/rhsm-pass)" && \
     dnf config-manager --set-enabled \
       rhocp-${USHIFT_VER}-for-rhel-10-$(uname -m)-rpms \
       fast-datapath-for-rhel-10-$(uname -m)-rpms && \
