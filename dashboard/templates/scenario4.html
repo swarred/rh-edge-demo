@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RH Edge Node — Golden Dome Sensor Fusion</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;600;700&family=Red+Hat+Text:wght@400;500&family=Red+Hat+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/dashboard.css">
+  <style>
+    :root {
+      --space:    #020c18;
+      --earth:    #0a2240;
+      --ocean:    #0d3158;
+      --land:     #1a4a2e;
+      --sat:      #c8d8e8;
+      --orbit:    rgba(57,255,122,0.5);
+      --rhsi:     #39ff7a;
+      --threat:   #ff4444;
+      --node-off: #333;
+      --node-on:  #39ff7a;
+      --pacaf:    #39ff7a;
+      --burke:    #4db8ff;
+      --jtac:     #ffcc00;
+      --dome:     #ff8c00;
+    }
+
+    .globe-wrap {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 8px 4px 0;
+    }
+    .globe-svg { width: 100%; max-width: 460px; }
+
+    /* Countdown */
+    .countdown-badge {
+      font-family: var(--font-m); font-size: 11px; color: var(--rhsi);
+      text-align: center; padding: 4px 0; letter-spacing: 0.08em;
+      min-height: 20px;
+    }
+
+    /* Orbital track */
+    .orbit-track { fill: none; stroke: var(--orbit); stroke-width: 1.5;
+                   stroke-dasharray: 6 4; }
+
+    /* Satellite */
+    .sat-body   { fill: var(--sat); }
+    .sat-panel  { fill: none; stroke: #4db8ff; stroke-width: 1.5; }
+    .sat-solar  { fill: #1a3a6a; stroke: #4db8ff; stroke-width: 0.8; }
+
+    /* Earth */
+    .earth-glow { fill: none; stroke: #1a4a8a; stroke-width: 3; opacity: 0.5; }
+    .earth-atmo { fill: none; stroke: #2a6aaa; stroke-width: 8; opacity: 0.12; }
+    .grid-line  { stroke: rgba(100,160,255,0.08); stroke-width: 0.5; fill: none; }
+
+    /* AOI */
+    .aoi-ring { fill: none; stroke: var(--threat); stroke-width: 1.5;
+                animation: aoi-pulse 1.2s ease-in-out infinite; }
+    @keyframes aoi-pulse { 0%,100%{opacity:1;r:14} 50%{opacity:.4;r:18} }
+    .aoi-center { fill: var(--threat); opacity: 0.8; }
+    .aoi-label  { fill: var(--threat); font-family: var(--font-m); font-size: 8px;
+                  font-weight: bold; }
+
+    /* RHSI downlinks */
+    .rhsi-link { fill: none; stroke: var(--rhsi); stroke-width: 1.5;
+                 stroke-dasharray: 5 3; opacity: 0;
+                 transition: opacity 0.6s; }
+    .rhsi-link.active { opacity: 1; animation: link-flow 0.8s linear infinite; }
+    @keyframes link-flow {
+      0%   { stroke-dashoffset: 0; }
+      100% { stroke-dashoffset: -16; }
+    }
+
+    /* Ground nodes */
+    .gnode { transition: all 0.5s; }
+    .gnode-ring { fill: none; stroke-width: 1.5; transition: all 0.5s; }
+    .gnode-dot  { transition: all 0.5s; }
+    .gnode-label { font-family: var(--font-m); font-size: 7.5px; font-weight: bold;
+                   transition: all 0.5s; }
+    .gnode-sublabel { font-family: var(--font-m); font-size: 6.5px; opacity: 0.7; }
+    .gnode-time { font-family: var(--font-m); font-size: 6.5px; }
+
+    .gnode-off .gnode-ring  { stroke: var(--node-off); }
+    .gnode-off .gnode-dot   { fill: var(--node-off); }
+    .gnode-off .gnode-label { fill: #555; }
+
+    .gnode-pacaf .gnode-ring  { stroke: var(--pacaf); filter: drop-shadow(0 0 4px var(--pacaf)); }
+    .gnode-pacaf .gnode-dot   { fill: var(--pacaf); }
+    .gnode-pacaf .gnode-label { fill: var(--pacaf); }
+    .gnode-pacaf .gnode-time  { fill: var(--pacaf); }
+
+    .gnode-burke .gnode-ring  { stroke: var(--burke); filter: drop-shadow(0 0 4px var(--burke)); }
+    .gnode-burke .gnode-dot   { fill: var(--burke); }
+    .gnode-burke .gnode-label { fill: var(--burke); }
+    .gnode-burke .gnode-time  { fill: var(--burke); }
+
+    .gnode-jtac .gnode-ring  { stroke: var(--jtac); filter: drop-shadow(0 0 4px var(--jtac)); }
+    .gnode-jtac .gnode-dot   { fill: var(--jtac); }
+    .gnode-jtac .gnode-label { fill: var(--jtac); }
+    .gnode-jtac .gnode-time  { fill: var(--jtac); }
+
+    .gnode-dome .gnode-ring  { stroke: var(--dome); filter: drop-shadow(0 0 4px var(--dome)); }
+    .gnode-dome .gnode-dot   { fill: var(--dome); }
+    .gnode-dome .gnode-label { fill: var(--dome); }
+    .gnode-dome .gnode-time  { fill: var(--dome); }
+
+    /* Threat tracks */
+    .hgv-track { fill: none; stroke: var(--threat); stroke-width: 1.5;
+                 stroke-dasharray: 4 3; opacity: 0; transition: opacity 0.5s; }
+    .hgv-track.visible { opacity: 1; animation: hgv-pulse 1s ease-in-out infinite; }
+    @keyframes hgv-pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+    /* Dissemination timer */
+    .dissem-timer { fill: var(--rhsi); font-family: var(--font-m);
+                    font-size: 13px; font-weight: bold; text-anchor: middle; }
+    .dissem-label { fill: #888; font-family: var(--font-m);
+                    font-size: 8px; text-anchor: middle; }
+
+    /* Complete flash */
+    .complete-flash { fill: var(--rhsi); font-family: var(--font-m);
+                      font-size: 10px; font-weight: bold; text-anchor: middle;
+                      opacity: 0; transition: opacity 0.8s; }
+    .complete-flash.visible { opacity: 1; }
+
+    /* ACM cluster table */
+    .acm-table { width: 100%; border-collapse: collapse; font-family: var(--font-m);
+                 font-size: 9px; }
+    .acm-table th { color: #555; font-weight: 600; padding: 3px 6px;
+                    border-bottom: 1px solid #222; text-align: left; }
+    .acm-table td { padding: 4px 6px; border-bottom: 1px solid #1a1a1a; }
+    .acm-ready  { color: var(--rhsi); }
+    .acm-name   { color: var(--text); }
+    .acm-ver    { color: #555; }
+
+    /* Scenario nav (shared) */
+    .scenario-nav { display: flex; gap: 6px; align-items: center; margin-left: auto; flex-shrink: 0; }
+    .snav-link {
+      padding: 3px 10px; border-radius: 3px; border: 1px solid var(--border);
+      color: var(--muted); text-decoration: none; font-family: var(--font-m);
+      font-size: 10px; font-weight: 600; letter-spacing: .05em; transition: all .2s;
+    }
+    .snav-link:hover { border-color: #666; color: var(--text); }
+    .snav-link.active { border-color: var(--red); color: var(--red); background: rgba(238,0,0,.08); }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-brand">
+    <svg class="rh-hat" viewBox="0 0 50 40" fill="none">
+      <path d="M25 2L47 15L25 28L3 15Z" fill="#EE0000"/>
+      <path d="M3 15L25 28L25 38L3 25Z" fill="#C00000"/>
+      <path d="M47 15L25 28L25 38L47 25Z" fill="#A00000"/>
+    </svg>
+    <span class="brand-name">Red Hat</span>
+    <span class="brand-sep">|</span>
+    <span class="brand-product">Edge Node</span>
+  </div>
+
+  <div class="header-scenario">
+    <span class="scenario-tag">S-4</span>
+    <span class="scenario-name">Multi-Domain Sensor Fusion — Golden Dome Early Warning</span>
+  </div>
+
+  <nav class="scenario-nav">
+    <a class="snav-link" href="/scenario/1">S-1 JTAC DDIL</a>
+    <a class="snav-link" href="/scenario/3">S-3 F-35 HMT</a>
+    <a class="snav-link active" href="/scenario/4">S-4 Golden Dome</a>
+  </nav>
+
+  <div class="header-link connected" id="link-badge">
+    <span class="link-dot"></span>
+    <span class="link-label">CONNECTED</span>
+  </div>
+</header>
+
+<main class="main-layout" style="grid-template-columns: 2fr 400px;">
+
+  <!-- ── LEFT: Globe / orbital view ────────────────────────────────── -->
+  <section class="panel panel-scene" style="padding:8px 4px 4px;">
+
+    <div class="scene-header">
+      <span class="scene-label">PWSA LEO CONSTELLATION — ORBITAL VIEW</span>
+      <span class="scene-location" id="scene-status">MONITORING</span>
+    </div>
+
+    <div class="countdown-badge" id="countdown-badge"></div>
+
+    <div class="globe-wrap">
+      <svg class="globe-svg" viewBox="0 0 460 320" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="earth-grad" cx="42%" cy="38%" r="58%">
+            <stop offset="0%"   stop-color="#0d3158"/>
+            <stop offset="60%"  stop-color="#0a2240"/>
+            <stop offset="100%" stop-color="#040f1e"/>
+          </radialGradient>
+          <radialGradient id="space-grad" cx="50%" cy="50%" r="50%">
+            <stop offset="0%"   stop-color="#050f20"/>
+            <stop offset="100%" stop-color="#010408"/>
+          </radialGradient>
+          <clipPath id="globe-clip">
+            <circle cx="230" cy="200" r="152"/>
+          </clipPath>
+          <filter id="node-glow">
+            <feGaussianBlur stdDeviation="3" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <filter id="sat-glow">
+            <feGaussianBlur stdDeviation="2" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+
+        <!-- Space background -->
+        <rect width="460" height="320" fill="url(#space-grad)"/>
+
+        <!-- Stars -->
+        <circle cx="20"  cy="15"  r="0.8" fill="white" opacity="0.6"/>
+        <circle cx="55"  cy="40"  r="0.6" fill="white" opacity="0.4"/>
+        <circle cx="400" cy="20"  r="0.9" fill="white" opacity="0.7"/>
+        <circle cx="430" cy="55"  r="0.5" fill="white" opacity="0.5"/>
+        <circle cx="10"  cy="80"  r="0.7" fill="white" opacity="0.5"/>
+        <circle cx="445" cy="100" r="0.6" fill="white" opacity="0.4"/>
+        <circle cx="30"  cy="250" r="0.8" fill="white" opacity="0.6"/>
+        <circle cx="420" cy="270" r="0.7" fill="white" opacity="0.5"/>
+        <circle cx="440" cy="180" r="0.5" fill="white" opacity="0.3"/>
+        <circle cx="75"  cy="290" r="0.6" fill="white" opacity="0.4"/>
+        <circle cx="380" cy="300" r="0.8" fill="white" opacity="0.5"/>
+        <circle cx="5"   cy="160" r="0.5" fill="white" opacity="0.3"/>
+
+        <!-- Earth atmosphere glow -->
+        <circle cx="230" cy="200" r="165" class="earth-atmo"/>
+        <circle cx="230" cy="200" r="157" class="earth-glow"/>
+
+        <!-- Earth body -->
+        <circle cx="230" cy="200" r="152" fill="url(#earth-grad)"/>
+
+        <!-- Landmasses (simplified INDOPACOM region) -->
+        <g clip-path="url(#globe-clip)">
+          <!-- Grid lines -->
+          <ellipse cx="230" cy="200" rx="152" ry="50" class="grid-line"/>
+          <ellipse cx="230" cy="200" rx="152" ry="100" class="grid-line"/>
+          <line x1="78" y1="200" x2="382" y2="200" class="grid-line"/>
+          <line x1="155" y1="50"  x2="155" y2="350" class="grid-line"/>
+          <line x1="230" y1="48"  x2="230" y2="352" class="grid-line"/>
+          <line x1="305" y1="50"  x2="305" y2="350" class="grid-line"/>
+
+          <!-- Simplified landmass blobs (Pacific region) -->
+          <!-- Asian coastline hint -->
+          <path d="M295,100 Q310,110 320,125 Q330,140 325,160 Q315,175 300,180 Q285,175 280,160 Q275,145 280,130 Z"
+                fill="#1a4a2e" opacity="0.6"/>
+          <!-- Japan area -->
+          <path d="M330,120 Q338,115 342,125 Q340,135 333,138 Q326,132 328,122 Z"
+                fill="#1a4a2e" opacity="0.5"/>
+          <!-- Philippines/Guam area -->
+          <path d="M318,185 Q324,180 328,188 Q326,196 320,196 Q314,192 318,185 Z"
+                fill="#1a4a2e" opacity="0.4"/>
+          <!-- Hawaii area -->
+          <path d="M135,195 Q142,191 145,198 Q143,205 137,204 Q132,200 135,195 Z"
+                fill="#1a4a2e" opacity="0.4"/>
+          <!-- CONUS west coast hint -->
+          <path d="M78,150 Q90,148 95,160 Q90,180 85,200 Q82,210 78,215 Q75,200 76,175 Z"
+                fill="#1a4a2e" opacity="0.5"/>
+        </g>
+
+        <!-- Orbital track -->
+        <ellipse cx="230" cy="72" rx="195" ry="38" class="orbit-track"/>
+
+        <!-- RHSI downlinks (hidden until triggered) -->
+        <!-- Sat to PACAF TOC -->
+        <line id="rhsi-pacaf" x1="230" y1="72" x2="148" y2="195"
+              class="rhsi-link" style="stroke: var(--pacaf);"/>
+        <!-- Sat to USS Burke -->
+        <line id="rhsi-burke" x1="230" y1="72" x2="195" y2="215"
+              class="rhsi-link" style="stroke: var(--burke);"/>
+        <!-- Sat to JTAC -->
+        <line id="rhsi-jtac" x1="230" y1="72" x2="288" y2="225"
+              class="rhsi-link" style="stroke: var(--jtac);"/>
+        <!-- Sat to Golden Dome -->
+        <line id="rhsi-dome" x1="230" y1="72" x2="108" y2="185"
+              class="rhsi-link" style="stroke: var(--dome);"/>
+
+        <!-- HGV threat tracks (from AOI outward) -->
+        <line id="hgv1" x1="302" y1="162" x2="260" y2="200" class="hgv-track"/>
+        <line id="hgv2" x1="302" y1="162" x2="310" y2="200" class="hgv-track"/>
+        <line id="hgv3" x1="302" y1="162" x2="285" y2="210" class="hgv-track"/>
+
+        <!-- AOI marker (North Korea/East Asia area) -->
+        <g id="aoi-group" style="display:none">
+          <circle id="aoi-ring1" cx="302" cy="162" r="14" class="aoi-ring"/>
+          <circle id="aoi-ring2" cx="302" cy="162" r="22" class="aoi-ring"
+                  style="animation-delay:0.4s; stroke-opacity:0.4;"/>
+          <circle cx="302" cy="162" r="3.5" class="aoi-center"/>
+          <text x="302" y="150" class="aoi-label" text-anchor="middle">AOI</text>
+        </g>
+
+        <!-- Ground nodes -->
+        <!-- PACAF TOC — Hickam AFB, Hawaii -->
+        <g id="gnode-pacaf" class="gnode gnode-off" filter="url(#node-glow)">
+          <circle cx="148" cy="195" r="9" class="gnode-ring"/>
+          <circle cx="148" cy="195" r="3" class="gnode-dot"/>
+          <text x="148" y="213" class="gnode-label" text-anchor="middle">PACAF TOC</text>
+          <text x="148" y="221" class="gnode-sublabel" text-anchor="middle">Hickam AFB</text>
+          <text id="time-pacaf" x="148" y="229" class="gnode-time" text-anchor="middle"></text>
+        </g>
+
+        <!-- USS Arleigh Burke DDG -->
+        <g id="gnode-burke" class="gnode gnode-off" filter="url(#node-glow)">
+          <circle cx="195" cy="215" r="9" class="gnode-ring"/>
+          <circle cx="195" cy="215" r="3" class="gnode-dot"/>
+          <text x="195" y="233" class="gnode-label" text-anchor="middle">USS BURKE DDG</text>
+          <text x="195" y="241" class="gnode-sublabel" text-anchor="middle">SPY-6 Radar</text>
+          <text id="time-burke" x="195" y="249" class="gnode-time" text-anchor="middle"></text>
+        </g>
+
+        <!-- JTAC Forward -->
+        <g id="gnode-jtac" class="gnode gnode-off" filter="url(#node-glow)">
+          <circle cx="288" cy="225" r="9" class="gnode-ring"/>
+          <circle cx="288" cy="225" r="3" class="gnode-dot"/>
+          <text x="288" y="243" class="gnode-label" text-anchor="middle">JTAC FWD-001</text>
+          <text x="288" y="251" class="gnode-sublabel" text-anchor="middle">W. Pacific</text>
+          <text id="time-jtac" x="288" y="259" class="gnode-time" text-anchor="middle"></text>
+        </g>
+
+        <!-- Golden Dome Battery -->
+        <g id="gnode-dome" class="gnode gnode-off" filter="url(#node-glow)">
+          <circle cx="108" cy="185" r="9" class="gnode-ring"/>
+          <circle cx="108" cy="185" r="3" class="gnode-dot"/>
+          <text x="108" y="172" class="gnode-label" text-anchor="middle">GOLDEN DOME BTY</text>
+          <text x="108" y="164" class="gnode-sublabel" text-anchor="middle">Intercept Bty</text>
+          <text id="time-dome" x="108" y="156" class="gnode-time" text-anchor="middle"></text>
+        </g>
+
+        <!-- Satellite -->
+        <g id="satellite" filter="url(#sat-glow)">
+          <!-- Solar panels -->
+          <rect x="-22" y="-3" width="14" height="6" rx="1" class="sat-solar"/>
+          <rect x="8"   y="-3" width="14" height="6" rx="1" class="sat-solar"/>
+          <!-- Panel struts -->
+          <line x1="-8" y1="0" x2="-8" y2="0" class="sat-panel"/>
+          <line x1="-8" y1="0" x2="-22" y2="0" stroke="#4db8ff" stroke-width="0.8"/>
+          <line x1="8"  y1="0" x2="22"  y2="0" stroke="#4db8ff" stroke-width="0.8"/>
+          <!-- Body -->
+          <rect x="-7" y="-5" width="14" height="10" rx="2" class="sat-body"/>
+          <!-- Sensor -->
+          <rect x="-2" y="5"  width="4"  height="4" rx="1" fill="#4db8ff" opacity="0.8"/>
+          <!-- Sensor glow when active -->
+          <circle id="sat-sensor" cx="0" cy="9" r="3" fill="var(--threat)"
+                  opacity="0" style="transition:opacity 0.5s"/>
+        </g>
+
+        <!-- Dissemination timer -->
+        <text id="dissem-timer" x="230" y="295" class="dissem-timer" style="display:none"></text>
+        <text id="dissem-label" x="230" y="308" class="dissem-label" style="display:none">
+          TRACK DISSEMINATION
+        </text>
+        <text id="complete-txt" x="230" y="298" class="complete-flash">
+          ✓ ALL NODES — JOINT FORCE NOTIFIED IN 7.8s
+        </text>
+
+      </svg>
+    </div>
+
+    <!-- Trigger controls -->
+    <div class="trigger-area">
+      <button class="trigger-btn" id="trigger-btn" onclick="doTrigger()">
+        ⚡ SIMULATE SATELLITE PASS
+      </button>
+      <button class="reset-btn" id="reset-btn" onclick="doReset()">
+        ↺ RESET
+      </button>
+    </div>
+
+  </section>
+
+  <!-- ── RIGHT: ACM fleet + dissemination log ───────────────────────── -->
+  <section class="panel panel-artifacts">
+
+    <div class="artifact-block">
+      <div class="artifact-hdr">
+        <span class="artifact-type">ACM CLUSTER FLEET</span>
+        <span class="artifact-src" id="acm-src">MANAGED</span>
+      </div>
+      <div style="padding:8px 10px;">
+        <table class="acm-table">
+          <thead>
+            <tr>
+              <th>CLUSTER</th>
+              <th>STATUS</th>
+              <th>VER</th>
+            </tr>
+          </thead>
+          <tbody id="acm-tbody">
+            <tr>
+              <td class="acm-name">sat-edge-01</td>
+              <td><span class="acm-ready">● Ready</span></td>
+              <td class="acm-ver">4.22</td>
+            </tr>
+            <tr>
+              <td class="acm-name" id="acm-pacaf">pacaf-toc-001</td>
+              <td><span id="acm-pacaf-s" class="acm-ver">○ Pending</span></td>
+              <td class="acm-ver">4.15</td>
+            </tr>
+            <tr>
+              <td class="acm-name" id="acm-burke">uss-burke-ddg</td>
+              <td><span id="acm-burke-s" class="acm-ver">○ Pending</span></td>
+              <td class="acm-ver">4.14</td>
+            </tr>
+            <tr>
+              <td class="acm-name" id="acm-jtac">jtac-fwd-001</td>
+              <td><span id="acm-jtac-s" class="acm-ver">○ Pending</span></td>
+              <td class="acm-ver">4.14</td>
+            </tr>
+            <tr>
+              <td class="acm-name" id="acm-dome">golden-dome-bty</td>
+              <td><span id="acm-dome-s" class="acm-ver">○ Pending</span></td>
+              <td class="acm-ver">4.15</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="tile-divider-h"></div>
+
+    <div class="artifact-block">
+      <div class="artifact-hdr">
+        <span class="artifact-type">RHSI — SPACE-TO-GROUND DATA FABRIC</span>
+        <span class="artifact-src" id="rhsi-src">STANDBY</span>
+      </div>
+      <pre class="artifact-code" id="rhsi-log">Skupper space-to-ground connectors
+
+Satellite: PWSA-07 (RHEL Image Mode)
+  phi-4-mini: loaded, 47.2 MB onboard
+
+Waiting for orbital pass...</pre>
+    </div>
+
+    <div class="tile-divider-h"></div>
+
+    <div class="artifact-block">
+      <div class="artifact-hdr">
+        <span class="artifact-type">TRACK DISSEMINATION LOG</span>
+        <span class="artifact-src" id="log-src">IDLE</span>
+      </div>
+      <pre class="artifact-code event-log" id="dissem-log">Awaiting satellite pass...</pre>
+    </div>
+
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <span>Red Hat, Inc. — rh-edge-node</span>
+  <span class="footer-sep">|</span>
+  <span>MicroShift 4.22 · RHEL 9.8 · UNCLASSIFIED // DEMO</span>
+</footer>
+
+<script>
+// ── Satellite orbital position ────────────────────────────────────────
+// Ellipse: cx=230, cy=72, rx=195, ry=38
+// Angle goes from ~200° (left) through 270° (bottom/near-zenith at cx=230,cy=110)
+// to ~340° (right) over the course of the scenario
+var SAT_CX = 230, SAT_CY = 72, SAT_RX = 195, SAT_RY = 38;
+
+// Map elapsed → angle in degrees (0=right, 90=bottom of ellipse)
+function satAngle(elapsed) {
+  // Before trigger: angle 215 (left side, approaching)
+  // At t=0: start moving
+  // At t=3: near zenith (270deg = bottom of ellipse = closest to earth = over AOI)
+  // At t=23: angle 325 (right side, departing)
+  if (elapsed === null) return 215;
+  var pct = Math.min(1, elapsed / 28);
+  return 215 + pct * 110; // 215 → 325
+}
+
+function satPos(elapsed) {
+  var deg = satAngle(elapsed);
+  var rad = deg * Math.PI / 180;
+  return {
+    x: SAT_CX + SAT_RX * Math.cos(rad),
+    y: SAT_CY + SAT_RY * Math.sin(rad),
+    deg: deg,
+  };
+}
+
+// ── ACM status helper ─────────────────────────────────────────────────
+function setAcm(id, ready) {
+  var el = document.getElementById('acm-' + id + '-s');
+  if (!el) return;
+  if (ready) {
+    el.textContent = '● Ready';
+    el.className = 'acm-ready';
+  } else {
+    el.textContent = '○ Pending';
+    el.className = 'acm-ver';
+  }
+}
+
+// ── Node state helper ─────────────────────────────────────────────────
+var NODE_TIMES = {};
+function setNode(id, cls, timeLabel) {
+  var el = document.getElementById('gnode-' + id);
+  if (el) el.className = 'gnode ' + (cls ? 'gnode-' + cls : 'gnode-off');
+  var tel = document.getElementById('time-' + id);
+  if (tel) tel.textContent = timeLabel || '';
+}
+
+// ── RHSI link helper ──────────────────────────────────────────────────
+function setRhsiLink(id, active) {
+  var el = document.getElementById('rhsi-' + id);
+  if (el) el.className = 'rhsi-link' + (active ? ' active' : '');
+}
+
+// ── Dissemination log ─────────────────────────────────────────────────
+function updateDissemLog(steps, complete) {
+  var el = document.getElementById('dissem-log');
+  var src = document.getElementById('log-src');
+  if (!el) return;
+
+  if (!steps.length) {
+    el.textContent = 'Awaiting satellite pass...';
+    if (src) src.textContent = 'IDLE';
+    return;
+  }
+
+  if (src) src.textContent = complete ? 'COMPLETE' : 'ACTIVE';
+
+  var COLOR = {
+    SAT: 'log-info', DETECT: 'log-warn', AI: 'log-info',
+    RHSI: 'log-info', PACAF: 'log-ok', NAVY: 'log-ok',
+    JTAC: 'log-ok', DOME: 'log-ok', COMPLETE: 'log-ok',
+  };
+
+  el.innerHTML = steps.map(function(s) {
+    var cls = COLOR[s.source] || 'log-info';
+    return '<span class="' + cls + '">[' + s.source + '] ' + s.msg + '</span>';
+  }).join('\n');
+}
+
+// ── RHSI artifact panel ───────────────────────────────────────────────
+function updateRhsiLog(data) {
+  var el = document.getElementById('rhsi-log');
+  var src = document.getElementById('rhsi-src');
+  if (!el) return;
+
+  if (!data.triggered) {
+    el.textContent = 'Skupper space-to-ground connectors\n\nSatellite: PWSA-07 (RHEL Image Mode)\n  phi-4-mini: loaded, 47.2 MB onboard\n\nWaiting for orbital pass...';
+    if (src) src.textContent = 'STANDBY';
+    return;
+  }
+
+  if (src) src.textContent = data.rhsi_up ? 'ACTIVE' : 'ESTABLISHING';
+  var html = 'Satellite: PWSA-07 (RHEL Image Mode)\n';
+  html += 'phi-4-mini: ' + (data.ai_complete ?
+    '<span class="t-ok">HYPERSONIC_GLIDE — 94% conf</span>' :
+    (data.sat_over_aoi ? '<span class="t-changed">processing...</span>' : 'standby')) + '\n\n';
+
+  html += 'Space-to-ground Skupper connectors:\n';
+  html += '  pacaf-toc-feed    ' + (data.node_pacaf ? '<span class="t-ok">● connected</span>' : (data.rhsi_up ? '<span class="t-changed">acquiring</span>' : '<span class="t-dim">waiting</span>')) + '\n';
+  html += '  burke-spy6-feed   ' + (data.node_burke ? '<span class="t-ok">● connected</span>' : (data.rhsi_up ? '<span class="t-changed">acquiring</span>' : '<span class="t-dim">waiting</span>')) + '\n';
+  html += '  jtac-fwd-feed     ' + (data.node_jtac  ? '<span class="t-ok">● connected</span>' : (data.rhsi_up ? '<span class="t-changed">acquiring</span>' : '<span class="t-dim">waiting</span>')) + '\n';
+  html += '  golden-dome-feed  ' + (data.node_dome  ? '<span class="t-ok">● connected</span>' : (data.rhsi_up ? '<span class="t-changed">acquiring</span>' : '<span class="t-dim">waiting</span>'));
+  el.innerHTML = html;
+}
+
+// ── Main update ───────────────────────────────────────────────────────
+function updateAll(data) {
+  var e = data.elapsed || 0;
+
+  // Scene status label
+  var lbl = document.getElementById('scene-status');
+  if (lbl) {
+    if (data.complete)        { lbl.textContent = '✓ DISSEMINATION COMPLETE'; lbl.style.color='#39ff7a'; }
+    else if (data.rhsi_up)    { lbl.textContent = 'TRACK DISSEMINATING';      lbl.style.color='#39ff7a'; }
+    else if (data.ai_complete){ lbl.textContent = 'AI: CLASSIFIED';           lbl.style.color='#ffcc00'; }
+    else if (data.sat_over_aoi){ lbl.textContent = '⚠ HGV DETECTED';         lbl.style.color='#ff4444'; }
+    else if (data.triggered)  { lbl.textContent = 'ORBITAL PASS';             lbl.style.color='#888'; }
+    else                      { lbl.textContent = 'MONITORING';               lbl.style.color='#888'; }
+  }
+
+  // Satellite position
+  var sat = document.getElementById('satellite');
+  if (sat) {
+    var pos = satPos(data.triggered ? e : null);
+    sat.setAttribute('transform', 'translate(' + pos.x.toFixed(1) + ',' + pos.y.toFixed(1) + ')');
+    // Sensor glow when over AOI
+    var sensor = document.getElementById('sat-sensor');
+    if (sensor) sensor.style.opacity = data.sat_over_aoi && !data.complete ? '0.9' : '0';
+  }
+
+  // AOI
+  var aoi = document.getElementById('aoi-group');
+  if (aoi) aoi.style.display = data.sat_over_aoi ? '' : 'none';
+
+  // HGV threat tracks
+  ['hgv1','hgv2','hgv3'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.className = 'hgv-track' + (data.sat_over_aoi && !data.complete ? ' visible' : '');
+  });
+
+  // RHSI links
+  setRhsiLink('pacaf', data.node_pacaf);
+  setRhsiLink('burke', data.node_burke);
+  setRhsiLink('jtac',  data.node_jtac);
+  setRhsiLink('dome',  data.node_dome);
+
+  // Ground nodes
+  setNode('pacaf', data.node_pacaf ? 'pacaf' : null, data.node_pacaf ? '+3.2s' : '');
+  setNode('burke', data.node_burke ? 'burke' : null, data.node_burke ? '+6.1s' : '');
+  setNode('jtac',  data.node_jtac  ? 'jtac'  : null, data.node_jtac  ? '+9.0s' : '');
+  setNode('dome',  data.node_dome  ? 'dome'  : null, data.node_dome  ? '+12.4s' : '');
+
+  // ACM fleet
+  setAcm('pacaf', data.node_pacaf);
+  setAcm('burke', data.node_burke);
+  setAcm('jtac',  data.node_jtac);
+  setAcm('dome',  data.node_dome);
+
+  // Dissemination timer
+  var timerEl = document.getElementById('dissem-timer');
+  var labelEl = document.getElementById('dissem-label');
+  var compEl  = document.getElementById('complete-txt');
+
+  if (data.complete) {
+    if (timerEl) timerEl.style.display = 'none';
+    if (labelEl) labelEl.style.display = 'none';
+    if (compEl)  compEl.className = 'complete-flash visible';
+  } else if (data.rhsi_up && !data.complete) {
+    var dissemStart = 9; // rhsi_up at t=9
+    var dissemElapsed = Math.max(0, e - dissemStart);
+    if (timerEl) {
+      timerEl.style.display = '';
+      timerEl.textContent = dissemElapsed.toFixed(1) + 's';
+      timerEl.setAttribute('fill', dissemElapsed > 6 ? '#39ff7a' : '#ffcc00');
+    }
+    if (labelEl) labelEl.style.display = '';
+    if (compEl)  compEl.className = 'complete-flash';
+  } else {
+    if (timerEl) timerEl.style.display = 'none';
+    if (labelEl) labelEl.style.display = 'none';
+    if (compEl)  compEl.className = 'complete-flash';
+  }
+
+  // Logs
+  updateDissemLog(data.steps || [], data.complete);
+  updateRhsiLog(data);
+}
+
+// ── Auto-trigger countdown ────────────────────────────────────────────
+var _autoTriggered = false;
+var _countdown = 5;
+var _countdownEl = document.getElementById('countdown-badge');
+
+function tickCountdown() {
+  if (_autoTriggered) return;
+  if (_countdown <= 0) {
+    _autoTriggered = true;
+    _countdownEl.textContent = '';
+    doTrigger();
+    return;
+  }
+  _countdownEl.textContent = 'Next orbital pass in: ' + _countdown + 's';
+  _countdown--;
+  setTimeout(tickCountdown, 1000);
+}
+
+// ── API ───────────────────────────────────────────────────────────────
+function poll() {
+  fetch('/api/status/4')
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (d.triggered && !_autoTriggered) _autoTriggered = true;
+      updateAll(d);
+    })
+    .catch(function(){});
+}
+
+function doTrigger() {
+  _autoTriggered = true;
+  _countdownEl.textContent = '';
+  fetch('/api/trigger/4', {method:'POST'}).then(poll);
+}
+
+function doReset() {
+  _autoTriggered = false;
+  _countdown = 5;
+  fetch('/api/reset/4', {method:'POST'}).then(function(){
+    poll();
+    setTimeout(tickCountdown, 500);
+  });
+}
+
+// Start
+setInterval(poll, 1500);
+poll();
+setTimeout(tickCountdown, 500);
+</script>
+
+</body>
+</html>

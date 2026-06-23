@@ -23,6 +23,9 @@ _s1 = {"trigger_time": None}
 # ── S3 state ──────────────────────────────────────────────────────────
 _s3 = {"trigger_time": None, "approved": False, "approved_time": None}
 
+# ── S4 state ──────────────────────────────────────────────────────────
+_s4 = {"trigger_time": None}
+
 _lock = threading.Lock()
 
 # ── Ansible log steps ─────────────────────────────────────────────────
@@ -56,6 +59,19 @@ _ANSIBLE_CLOUD = [
     (35, "ok",      "jtac-ops"),
     (39, "recap",   ""),
     (40, "result",  "jtac-ops : ok=5  changed=1  unreachable=0"),
+]
+
+# ── S4 dissemination steps ───────────────────────────────────────────
+_S4_STEPS = [
+    (0,  "SAT",      "PWSA-07: orbital pass — approaching AOI"),
+    (3,  "DETECT",   "HGV salvo detected — 3 tracks acquired"),
+    (6,  "AI",       "phi-4-mini (RHEL Image Mode): HYPERSONIC_GLIDE — 94% conf"),
+    (9,  "RHSI",     "Space-to-ground Skupper link established"),
+    (12, "PACAF",    "PACAF-TOC-001: verified track received"),
+    (15, "NAVY",     "USS-BURKE-DDG: SPY-6 radar cueing initiated"),
+    (18, "JTAC",     "JTAC-FWD-001: track received — operators alerted"),
+    (21, "DOME",     "GOLDEN-DOME-BTY: intercept solution computed"),
+    (23, "COMPLETE", "DISSEMINATION COMPLETE — 7.8s · 4 nodes notified"),
 ]
 
 # ── S3 RHSI feed steps ────────────────────────────────────────────────
@@ -93,7 +109,7 @@ def index():
 
 @app.route("/scenario/<int:n>")
 def scenario(n):
-    if n not in (1, 3):
+    if n not in (1, 3, 4):
         return redirect(url_for("scenario", n=1))
     return render_template(f"scenario{n}.html", active=n)
 
@@ -247,6 +263,45 @@ def api_approve_s3():
     with _lock:
         _s3["approved"] = True
         _s3["approved_time"] = time.time()
+    return jsonify({"ok": True})
+
+
+# ── S4 status / trigger / reset ───────────────────────────────────────
+@app.route("/api/status/4")
+def api_status_s4():
+    e = _elapsed(_s4)
+    steps = [
+        {"ts": ts, "source": src, "msg": msg}
+        for ts, src, msg in _S4_STEPS
+        if e is not None and e >= ts
+    ] if e is not None else []
+
+    return jsonify({
+        "triggered": e is not None,
+        "elapsed": int(e) if e else 0,
+        "steps": steps,
+        "sat_over_aoi":   e is not None and e >= 3,
+        "ai_complete":    e is not None and e >= 6,
+        "rhsi_up":        e is not None and e >= 9,
+        "node_pacaf":     e is not None and e >= 12,
+        "node_burke":     e is not None and e >= 15,
+        "node_jtac":      e is not None and e >= 18,
+        "node_dome":      e is not None and e >= 21,
+        "complete":       e is not None and e >= 23,
+    })
+
+
+@app.route("/api/trigger/4", methods=["POST"])
+def api_trigger_s4():
+    with _lock:
+        _s4["trigger_time"] = time.time()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/reset/4", methods=["POST"])
+def api_reset_s4():
+    with _lock:
+        _s4["trigger_time"] = None
     return jsonify({"ok": True})
 
 
