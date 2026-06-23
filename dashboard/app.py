@@ -4,39 +4,29 @@ import time
 import threading
 import urllib.request
 import json
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, redirect, url_for
 
 app = Flask(__name__)
 
 IDENTITY_URL = os.environ.get("IDENTITY_SERVICE_URL", "http://localhost:5000")
 
-# ── Demo state ────────────────────────────────────────────────────────
+# ── Shared identity state ─────────────────────────────────────────────
 _state = {
-    "mode": "CLOUD",           # CLOUD | LOCAL
-    "link": "CONNECTED",       # CONNECTED | SEVERED
-    "trigger_time": None,
-    "ansible_step": 0,
+    "mode": "CLOUD",
+    "link": "CONNECTED",
     "eda_events": [],
 }
 
-# Ansible log steps — shown progressively after trigger
-_ANSIBLE_CLOUD_STEPS = [
-    (0,  "play",    "PLAY [rh-edge-node — ZTA Policy Push]"),
-    (3,  "task",    "Gathering Facts"),
-    (5,  "ok",      "jtac-ops"),
-    (9,  "task",    "zta_policy : verify MicroShift API reachable"),
-    (11, "ok",      "jtac-ops"),
-    (15, "task",    "zta_policy : apply roe-cache ConfigMap update"),
-    (19, "changed", "jtac-ops"),
-    (23, "task",    "zta_policy : refresh operator token TTLs"),
-    (27, "ok",      "jtac-ops"),
-    (31, "task",    "zta_policy : POST /policy/sync to identity-service"),
-    (35, "ok",      "jtac-ops"),
-    (39, "recap",   ""),
-    (40, "result",  "jtac-ops : ok=5  changed=1  unreachable=0"),
-]
+# ── S1 state ──────────────────────────────────────────────────────────
+_s1 = {"trigger_time": None}
 
-_ANSIBLE_LOCAL_STEPS = [
+# ── S3 state ──────────────────────────────────────────────────────────
+_s3 = {"trigger_time": None, "approved": False, "approved_time": None}
+
+_lock = threading.Lock()
+
+# ── Ansible log steps ─────────────────────────────────────────────────
+_ANSIBLE_LOCAL = [
     (0,  "play",    "PLAY [rh-edge-node — DDIL Local Enforcement]"),
     (2,  "task",    "Gathering Facts"),
     (4,  "ok",      "jtac-ops"),
@@ -52,7 +42,34 @@ _ANSIBLE_LOCAL_STEPS = [
     (28, "result",  "jtac-ops : ok=4  changed=2  unreachable=0"),
 ]
 
-_lock = threading.Lock()
+_ANSIBLE_CLOUD = [
+    (0,  "play",    "PLAY [rh-edge-node — ZTA Policy Push]"),
+    (3,  "task",    "Gathering Facts"),
+    (5,  "ok",      "jtac-ops"),
+    (9,  "task",    "zta_policy : verify MicroShift API reachable"),
+    (11, "ok",      "jtac-ops"),
+    (15, "task",    "zta_policy : apply roe-cache ConfigMap update"),
+    (19, "changed", "jtac-ops"),
+    (23, "task",    "zta_policy : refresh operator token TTLs"),
+    (27, "ok",      "jtac-ops"),
+    (31, "task",    "zta_policy : POST /policy/sync to identity-service"),
+    (35, "ok",      "jtac-ops"),
+    (39, "recap",   ""),
+    (40, "result",  "jtac-ops : ok=5  changed=1  unreachable=0"),
+]
+
+# ── S3 RHSI feed steps ────────────────────────────────────────────────
+_S3_FEED_STEPS = [
+    (2,  "THREAT",   "Hypersonic threat detected — track initiated"),
+    (5,  "RHSI",     "Skupper connector: CCA-swarm-feed — ACQUIRING"),
+    (8,  "RHSI",     "Skupper connector: CCA-swarm-feed — 6 feeds FUSED"),
+    (11, "RHSI",     "Skupper connector: gnd-radar-track — ACQUIRING"),
+    (14, "RHSI",     "Skupper connector: gnd-radar-track — FUSED"),
+    (17, "RHSI",     "Skupper connector: golden-dome-track — CORRELATED"),
+    (19, "AI",       "phi-4-mini: fusing 3 data sources — PROCESSING"),
+    (21, "AI",       "phi-4-mini: inference complete — 187ms"),
+    (22, "RECOMMEND","BREAK LEFT / 4G / CHAFF × 2 — confidence: 97%"),
+]
 
 
 def _call(path: str) -> dict | None:
@@ -63,14 +80,22 @@ def _call(path: str) -> dict | None:
         return None
 
 
-def _elapsed() -> float | None:
-    t = _state.get("trigger_time")
+def _elapsed(state_dict: dict) -> float | None:
+    t = state_dict.get("trigger_time")
     return (time.time() - t) if t else None
 
 
+# ── Routes ────────────────────────────────────────────────────────────
 @app.route("/")
 def index():
-    return render_template("scenario1.html")
+    return redirect(url_for("scenario", n=1))
+
+
+@app.route("/scenario/<int:n>")
+def scenario(n):
+    if n not in (1, 3):
+        return redirect(url_for("scenario", n=1))
+    return render_template(f"scenario{n}.html", active=n)
 
 
 @app.route("/health")
@@ -78,21 +103,19 @@ def health():
     return jsonify({"status": "ok"})
 
 
+# ── Shared identity status (used by both scenarios) ───────────────────
 @app.route("/api/status")
 def api_status():
     ops_data = _call("/operators") or {}
     rbac_data = _call("/rbac/status") or {}
-    e = _elapsed()
+    e = _elapsed(_s1)
     triggered = e is not None
-
-    # Build ansible log lines based on elapsed time
-    steps = _ANSIBLE_LOCAL_STEPS if _state["mode"] == "LOCAL" else _ANSIBLE_CLOUD_STEPS
-    log_lines = []
-    if triggered and e is not None:
-        for ts, kind, content in steps:
-            if e >= ts:
-                log_lines.append({"kind": kind, "content": content, "ts": ts})
-
+    steps = _ANSIBLE_LOCAL if _state["mode"] == "LOCAL" else _ANSIBLE_CLOUD
+    log_lines = [
+        {"kind": kind, "content": content, "ts": ts}
+        for ts, kind, content in steps
+        if triggered and e is not None and e >= ts
+    ]
     return jsonify({
         "mode": _state["mode"],
         "link": _state["link"],
@@ -106,73 +129,125 @@ def api_status():
     })
 
 
+# ── S3 status ─────────────────────────────────────────────────────────
+@app.route("/api/status/3")
+def api_status_s3():
+    ops_data = _call("/operators") or {}
+    e = _elapsed(_s3)
+    ea = (_s3["approved_time"] and time.time() - _s3["approved_time"])
+
+    feed_events = [
+        {"ts": ts, "source": src, "msg": msg}
+        for ts, src, msg in _S3_FEED_STEPS
+        if e is not None and e >= ts
+    ] if e is not None else []
+
+    # Bogey state
+    bogey_visible  = e is not None and e >= 2
+    bogey_tracking = e is not None and e >= 5
+    bogey_locked   = e is not None and e >= 14
+    bogey_neutralized = _s3["approved"] and ea and ea >= 4
+
+    # Data feed states
+    def feed_state(on_at, fused_at):
+        if e is None:            return "offline"
+        if e < on_at:            return "offline"
+        if e < fused_at:         return "acquiring"
+        return "fused"
+
+    rec_ready = e is not None and e >= 22
+    approve_active = rec_ready and not _s3["approved"]
+
+    return jsonify({
+        "triggered": e is not None,
+        "elapsed": int(e) if e else 0,
+        "approved": _s3["approved"],
+        "approved_elapsed": int(ea) if ea else 0,
+        "bogey_visible": bogey_visible,
+        "bogey_tracking": bogey_tracking,
+        "bogey_locked": bogey_locked,
+        "bogey_neutralized": bogey_neutralized,
+        "feed_cca":  feed_state(5, 8),
+        "feed_radar": feed_state(11, 14),
+        "feed_dome": feed_state(17, 17),
+        "rec_ready": rec_ready,
+        "approve_active": approve_active,
+        "feed_events": feed_events,
+        "operators": ops_data.get("operators", []),
+        "mode": _state["mode"],
+        "link": _state["link"],
+    })
+
+
+# ── S1 trigger / reset ────────────────────────────────────────────────
 @app.route("/api/trigger", methods=["POST"])
 def api_trigger():
     with _lock:
-        _state["trigger_time"] = time.time()
+        _s1["trigger_time"] = time.time()
         _state["link"] = "SEVERED"
         _state["mode"] = "LOCAL"
-        _state["eda_events"].append({
-            "ts": time.time(),
-            "source": "EDA",
-            "msg": "EW jamming detected — link loss confirmed",
-            "level": "warn",
-        })
-        _state["eda_events"].append({
-            "ts": time.time(),
-            "source": "EDA",
-            "msg": 'Rule "DDIL Detected" fired — job queued',
-            "level": "info",
-        })
-        _state["eda_events"].append({
-            "ts": time.time(),
-            "source": "ANSIBLE",
-            "msg": "enforce_local playbook starting on rh-edge-node",
-            "level": "info",
-        })
-    # Tell identity service to switch to LOCAL mode and re-issue tokens at 3600s TTL
+        _state["eda_events"].append({"ts": time.time(), "source": "EDA",
+            "msg": "EW jamming detected — link loss confirmed", "level": "warn"})
+        _state["eda_events"].append({"ts": time.time(), "source": "EDA",
+            "msg": 'Rule "DDIL Detected" fired — job queued', "level": "info"})
+        _state["eda_events"].append({"ts": time.time(), "source": "ANSIBLE",
+            "msg": "enforce_local playbook starting on rh-edge-node", "level": "info"})
     try:
         data = json.dumps({"mode": "LOCAL"}).encode()
-        req = urllib.request.Request(
-            f"{IDENTITY_URL}/mode",
-            data=data,
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        urllib.request.urlopen(req, timeout=2)
-        urllib.request.urlopen(
-            urllib.request.Request(f"{IDENTITY_URL}/operators/auth-all", method="POST"),
-            timeout=2,
-        )
+        urllib.request.urlopen(urllib.request.Request(
+            f"{IDENTITY_URL}/mode", data=data,
+            headers={"Content-Type": "application/json"}, method="POST"), timeout=2)
+        urllib.request.urlopen(urllib.request.Request(
+            f"{IDENTITY_URL}/operators/auth-all", method="POST"), timeout=2)
     except Exception:
         pass
-    return jsonify({"ok": True, "mode": "LOCAL"})
+    return jsonify({"ok": True})
 
 
 @app.route("/api/reset", methods=["POST"])
 def api_reset():
     with _lock:
-        _state["trigger_time"] = None
+        _s1["trigger_time"] = None
         _state["link"] = "CONNECTED"
         _state["mode"] = "CLOUD"
         _state["eda_events"] = []
     try:
         data = json.dumps({"mode": "CLOUD"}).encode()
-        req = urllib.request.Request(
-            f"{IDENTITY_URL}/mode",
-            data=data,
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        urllib.request.urlopen(req, timeout=2)
-        # Re-auth all operators
-        urllib.request.urlopen(
-            urllib.request.Request(f"{IDENTITY_URL}/operators/auth-all", method="POST"),
-            timeout=2,
-        )
+        urllib.request.urlopen(urllib.request.Request(
+            f"{IDENTITY_URL}/mode", data=data,
+            headers={"Content-Type": "application/json"}, method="POST"), timeout=2)
+        urllib.request.urlopen(urllib.request.Request(
+            f"{IDENTITY_URL}/operators/auth-all", method="POST"), timeout=2)
     except Exception:
         pass
-    return jsonify({"ok": True, "mode": "CLOUD"})
+    return jsonify({"ok": True})
+
+
+# ── S3 trigger / reset / approve ─────────────────────────────────────
+@app.route("/api/trigger/3", methods=["POST"])
+def api_trigger_s3():
+    with _lock:
+        _s3["trigger_time"] = time.time()
+        _s3["approved"] = False
+        _s3["approved_time"] = None
+    return jsonify({"ok": True})
+
+
+@app.route("/api/reset/3", methods=["POST"])
+def api_reset_s3():
+    with _lock:
+        _s3["trigger_time"] = None
+        _s3["approved"] = False
+        _s3["approved_time"] = None
+    return jsonify({"ok": True})
+
+
+@app.route("/api/approve/3", methods=["POST"])
+def api_approve_s3():
+    with _lock:
+        _s3["approved"] = True
+        _s3["approved_time"] = time.time()
+    return jsonify({"ok": True})
 
 
 if __name__ == "__main__":

@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RH Edge Node — F-35 Human-Machine Teaming</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@400;600;700&family=Red+Hat+Text:wght@400;500&family=Red+Hat+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/dashboard.css">
+  <style>
+    /* ── HMDS visor ──────────────────────────────────────────────────── */
+    .visor-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      padding: 12px 8px 4px;
+    }
+    .visor-svg { width: 100%; max-width: 420px; }
+
+    /* HUD green */
+    :root { --hud: #39ff7a; --hud-dim: #1a7a3a; --hud-warn: #ffcc00; --hud-threat: #ff4444; }
+
+    .hud-frame { fill: none; stroke: var(--hud-dim); stroke-width: 1.5; }
+    .hud-text  { fill: var(--hud); font-family: 'Red Hat Mono', monospace;
+                 font-size: 9px; font-weight: bold; }
+    .hud-dim   { fill: var(--hud-dim); font-family: 'Red Hat Mono', monospace; font-size: 8px; }
+    .hud-warn  { fill: var(--hud-warn); font-family: 'Red Hat Mono', monospace;
+                 font-size: 9px; font-weight: bold; }
+    .hud-threat { fill: var(--hud-threat); font-family: 'Red Hat Mono', monospace;
+                  font-size: 9px; font-weight: bold; }
+
+    /* Reticle */
+    .reticle-ring  { fill: none; stroke: var(--hud); stroke-width: 1.5; opacity: 0.7; }
+    .reticle-cross { stroke: var(--hud); stroke-width: 1; opacity: 0.8; }
+
+    /* Horizon */
+    .horizon { stroke: var(--hud); stroke-width: 1.5; }
+    .horizon-tick { stroke: var(--hud); stroke-width: 1; }
+
+    /* Bogey */
+    .bogey-sym  { fill: none; stroke: var(--hud-threat); stroke-width: 2;
+                  transition: all 0.8s linear; }
+    .bogey-sym.locked { stroke: var(--hud-warn); animation: lock-pulse .6s ease-in-out infinite; }
+    .bogey-sym.neutralized { stroke: var(--hud-dim); opacity: 0.3; }
+
+    .lock-box { fill: none; stroke: var(--hud-warn); stroke-width: 1.5;
+                stroke-dasharray: 4 3; animation: lock-pulse .6s ease-in-out infinite; }
+    .lock-box.solid { stroke-dasharray: none; }
+    .lock-box.neutralized { stroke: var(--hud-dim); opacity: 0.3; animation: none; }
+
+    @keyframes lock-pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+    /* CCA swarm lines */
+    .cca-line { stroke: var(--hud); stroke-width: 1; stroke-dasharray: 3 3;
+                opacity: 0; transition: opacity 0.5s; }
+    .cca-line.active { opacity: 0.6; animation: cca-pulse 1s ease-in-out infinite; }
+    @keyframes cca-pulse { 0%,100%{opacity:0.6} 50%{opacity:0.2} }
+
+    /* Recommendation overlay */
+    .rec-box { opacity: 0; transition: opacity 0.8s; }
+    .rec-box.visible { opacity: 1; }
+    .rec-bg  { fill: rgba(0,0,0,0.75); rx: 3; }
+    .rec-text { fill: #ffffff; font-family: 'Red Hat Mono', monospace;
+                font-size: 9px; font-weight: bold; }
+    .rec-label { fill: var(--hud-warn); font-family: 'Red Hat Mono', monospace;
+                 font-size: 7px; letter-spacing: 0.1em; }
+
+    /* Visor vignette frame */
+    .visor-vignette { pointer-events: none; }
+
+    /* ── Feed tiles ──────────────────────────────────────────────────── */
+    .feed-strip { display: flex; gap: 6px; width: 100%; padding: 0 4px 6px; }
+    .feed-tile {
+      flex: 1; border: 1px solid #333; border-radius: 4px;
+      padding: 6px 8px; background: #0d0d0d; text-align: center;
+    }
+    .feed-tile .ft-label { font-size: 9px; color: #888; letter-spacing: 0.08em;
+                           font-family: var(--font-m); }
+    .feed-tile .ft-status { font-size: 10px; font-family: var(--font-m);
+                            font-weight: 600; margin-top: 2px; }
+    .feed-tile .ft-sub { font-size: 8px; color: #555; margin-top: 1px; }
+    .ft-offline  .ft-status { color: #555; }
+    .ft-acquiring .ft-status { color: #ffcc00; animation: acq-blink .8s infinite; }
+    @keyframes acq-blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .ft-fused .ft-status { color: #39ff7a; }
+    .ft-fused { border-color: #1a4a2a; }
+
+    /* ── Approve button ──────────────────────────────────────────────── */
+    .approve-btn {
+      width: 100%; padding: 10px; margin-top: 4px;
+      background: transparent; border: 1px solid #333; border-radius: 4px;
+      color: #444; font-family: var(--font-m); font-size: 12px; font-weight: 600;
+      letter-spacing: 0.1em; cursor: not-allowed; transition: all 0.4s;
+    }
+    .approve-btn.ready {
+      background: #1a0a00; border-color: #ff8c00; color: #ff8c00;
+      cursor: pointer; animation: approve-glow 1.5s ease-in-out infinite;
+    }
+    .approve-btn.ready:hover { background: #3a1800; }
+    .approve-btn.executed { background: #001a0a; border-color: #39ff7a;
+                            color: #39ff7a; cursor: default; animation: none; }
+    @keyframes approve-glow {
+      0%,100%{box-shadow:0 0 0 0 rgba(255,140,0,0)}
+      50%{box-shadow:0 0 12px 2px rgba(255,140,0,0.4)}
+    }
+
+    /* Scenario nav */
+    .scenario-nav { display: flex; gap: 6px; margin-left: auto; align-items: center; }
+    .snav-link {
+      padding: 3px 10px; border-radius: 3px; border: 1px solid #333;
+      color: #888; text-decoration: none; font-family: var(--font-m);
+      font-size: 10px; font-weight: 600; letter-spacing: 0.05em;
+      transition: all 0.2s;
+    }
+    .snav-link:hover { border-color: #666; color: #ccc; }
+    .snav-link.active { border-color: #EE0000; color: #EE0000; background: #1a0000; }
+  </style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-brand">
+    <svg class="rh-hat" viewBox="0 0 50 40" fill="none">
+      <path d="M25 2L47 15L25 28L3 15Z" fill="#EE0000"/>
+      <path d="M3 15L25 28L25 38L3 25Z" fill="#C00000"/>
+      <path d="M47 15L25 28L25 38L47 25Z" fill="#A00000"/>
+    </svg>
+    <span class="brand-name">Red Hat</span>
+    <span class="brand-sep">|</span>
+    <span class="brand-product">Edge Node</span>
+  </div>
+
+  <div class="header-scenario">
+    <span class="scenario-tag">S-3</span>
+    <span class="scenario-name">Wearable Edge — Human-Machine Teaming</span>
+  </div>
+
+  <nav class="scenario-nav">
+    <a class="snav-link" href="/scenario/1">S-1 JTAC DDIL</a>
+    <a class="snav-link active" href="/scenario/3">S-3 F-35 HMT</a>
+  </nav>
+
+  <div class="header-link connected" id="link-badge">
+    <span class="link-dot"></span>
+    <span class="link-label">CONNECTED</span>
+  </div>
+</header>
+
+<main class="main-layout">
+
+  <!-- ── LEFT: HMDS Visor ──────────────────────────────────────────── -->
+  <section class="panel panel-scene" style="padding:8px 8px 4px;">
+
+    <div class="scene-header">
+      <span class="scene-label">F-35 HMDS — PILOT VIEW</span>
+      <span class="scene-location" id="hud-status-label">NOMINAL</span>
+    </div>
+
+    <div class="visor-wrap">
+      <svg class="visor-svg" viewBox="0 0 440 310" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <!-- Visor clip -->
+          <clipPath id="visor-clip">
+            <ellipse cx="220" cy="155" rx="210" ry="148"/>
+          </clipPath>
+          <!-- Vignette gradient -->
+          <radialGradient id="vignette" cx="50%" cy="50%" r="50%">
+            <stop offset="60%" stop-color="black" stop-opacity="0"/>
+            <stop offset="100%" stop-color="black" stop-opacity="0.85"/>
+          </radialGradient>
+          <!-- Threat track gradient -->
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="2" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+        </defs>
+
+        <!-- Visor background -->
+        <ellipse cx="220" cy="155" rx="210" ry="148" fill="#030a05"/>
+
+        <!-- ── HUD content (clipped to visor) ── -->
+        <g clip-path="url(#visor-clip)">
+
+          <!-- Horizon line -->
+          <line x1="100" y1="158" x2="340" y2="158" class="horizon" opacity="0.5"/>
+          <line x1="100" y1="158" x2="120" y2="158" class="horizon-tick"/>
+          <line x1="320" y1="158" x2="340" y2="158" class="horizon-tick"/>
+          <line x1="200" y1="153" x2="200" y2="163" class="horizon-tick" opacity="0.4"/>
+          <line x1="240" y1="153" x2="240" y2="163" class="horizon-tick" opacity="0.4"/>
+
+          <!-- Heading tape -->
+          <text x="130" y="22" class="hud-dim" text-anchor="middle">270</text>
+          <text x="165" y="22" class="hud-dim" text-anchor="middle">275</text>
+          <text x="220" y="22" class="hud-text" text-anchor="middle">280</text>
+          <text x="275" y="22" class="hud-dim" text-anchor="middle">285</text>
+          <text x="310" y="22" class="hud-dim" text-anchor="middle">290</text>
+          <line x1="220" y1="25" x2="220" y2="30" stroke="#39ff7a" stroke-width="1.5"/>
+          <line x1="90" y1="18" x2="350" y2="18" class="hud-frame" opacity="0.3"/>
+
+          <!-- Speed tape (left) -->
+          <text x="28" y="130" class="hud-dim" text-anchor="middle">470</text>
+          <text x="28" y="148" class="hud-dim" text-anchor="middle">460</text>
+          <text x="28" y="162" class="hud-text" text-anchor="middle" id="spd-val">450</text>
+          <text x="28" y="176" class="hud-dim" text-anchor="middle">440</text>
+          <text x="28" y="194" class="hud-dim" text-anchor="middle">430</text>
+          <rect x="10" y="155" width="36" height="14" fill="none" stroke="#39ff7a"
+                stroke-width="0.8" opacity="0.4"/>
+          <text x="28" y="235" class="hud-dim" text-anchor="middle" font-size="7">KCAS</text>
+
+          <!-- Altitude tape (right) -->
+          <text x="412" y="130" class="hud-dim" text-anchor="middle">29K</text>
+          <text x="412" y="148" class="hud-dim" text-anchor="middle">28.5K</text>
+          <text x="412" y="162" class="hud-text" text-anchor="middle" id="alt-val">28K</text>
+          <text x="412" y="176" class="hud-dim" text-anchor="middle">27.5K</text>
+          <text x="412" y="194" class="hud-dim" text-anchor="middle">27K</text>
+          <rect x="394" y="155" width="36" height="14" fill="none" stroke="#39ff7a"
+                stroke-width="0.8" opacity="0.4"/>
+          <text x="412" y="235" class="hud-dim" text-anchor="middle" font-size="7">ALT FT</text>
+
+          <!-- G meter -->
+          <text x="60" y="260" class="hud-dim">G</text>
+          <text x="72" y="260" class="hud-text" id="g-val">2.4</text>
+
+          <!-- Mach -->
+          <text x="340" y="260" class="hud-dim">M</text>
+          <text x="352" y="260" class="hud-text">1.62</text>
+
+          <!-- Center reticle -->
+          <circle cx="220" cy="158" r="28" class="reticle-ring"/>
+          <circle cx="220" cy="158" r="4"  class="reticle-ring" opacity="0.5"/>
+          <line x1="186" y1="158" x2="207" y2="158" class="reticle-cross"/>
+          <line x1="233" y1="158" x2="252" y2="158" class="reticle-cross"/>
+          <line x1="220" y1="124" x2="220" y2="143" class="reticle-cross"/>
+          <line x1="220" y1="173" x2="220" y2="192" class="reticle-cross"/>
+
+          <!-- ── Bogey ── -->
+          <g id="bogey-group" style="display:none">
+            <!-- Diamond threat symbol -->
+            <polygon id="bogey-sym" points="0,-10 8,0 0,10 -8,0"
+                     class="bogey-sym" filter="url(#glow)"/>
+            <!-- Tracking/lock box -->
+            <rect id="lock-box" x="-20" y="-20" width="40" height="40"
+                  class="lock-box" style="display:none"/>
+            <!-- Bogey label -->
+            <text id="bogey-label" y="-15" class="hud-threat"
+                  text-anchor="middle" font-size="8">HOSTILE</text>
+            <!-- Range/closure -->
+            <text id="bogey-range" y="22" class="hud-warn"
+                  text-anchor="middle" font-size="7" style="display:none">RNG:38NM VC:-1200</text>
+          </g>
+
+          <!-- ── CCA swarm lines (radiate from center on approval) ── -->
+          <g id="cca-swarm" style="display:none">
+            <line x1="220" y1="158" x2="160" y2="100" class="cca-line" id="cca1"/>
+            <line x1="220" y1="158" x2="280" y2="90"  class="cca-line" id="cca2"/>
+            <line x1="220" y1="158" x2="310" y2="140" class="cca-line" id="cca3"/>
+            <line x1="220" y1="158" x2="300" y2="200" class="cca-line" id="cca4"/>
+            <line x1="220" y1="158" x2="150" y2="200" class="cca-line" id="cca5"/>
+            <line x1="220" y1="158" x2="140" y2="130" class="cca-line" id="cca6"/>
+            <circle cx="160" cy="100" r="4" fill="var(--hud)" opacity="0.5" id="cca-dot1"/>
+            <circle cx="280" cy="90"  r="4" fill="var(--hud)" opacity="0.5" id="cca-dot2"/>
+            <circle cx="310" cy="140" r="4" fill="var(--hud)" opacity="0.5" id="cca-dot3"/>
+            <circle cx="300" cy="200" r="4" fill="var(--hud)" opacity="0.5" id="cca-dot4"/>
+            <circle cx="150" cy="200" r="4" fill="var(--hud)" opacity="0.5" id="cca-dot5"/>
+            <circle cx="140" cy="130" r="4" fill="var(--hud)" opacity="0.5" id="cca-dot6"/>
+          </g>
+
+          <!-- ── AI Recommendation overlay ── -->
+          <g id="rec-box" class="rec-box">
+            <rect x="110" y="62" width="220" height="50" rx="3"
+                  fill="rgba(0,0,0,0.82)" stroke="#ff8c00" stroke-width="1"/>
+            <text x="220" y="78" class="rec-label" text-anchor="middle">
+              AI RECOMMENDATION — phi-4-mini — 187ms
+            </text>
+            <text x="220" y="93" class="rec-text" text-anchor="middle" font-size="11">
+              BREAK LEFT · 4G · CHAFF ×2
+            </text>
+            <text x="220" y="106" class="rec-label" text-anchor="middle" fill="#39ff7a">
+              CONFIDENCE: 97% · CCA SWARM: READY
+            </text>
+          </g>
+
+          <!-- ── Neutralized label ── -->
+          <text id="neutralized-label" x="220" y="240" class="hud-text"
+                text-anchor="middle" font-size="11"
+                style="display:none;fill:#39ff7a;">
+            ⬡ THREAT NEUTRALIZED — CCA SWARM EXECUTED
+          </text>
+
+        </g>
+
+        <!-- Visor vignette overlay -->
+        <ellipse cx="220" cy="155" rx="210" ry="148" fill="url(#vignette)"
+                 class="visor-vignette"/>
+
+        <!-- Visor frame border -->
+        <ellipse cx="220" cy="155" rx="210" ry="148" fill="none"
+                 stroke="#1a3a22" stroke-width="6"/>
+        <ellipse cx="220" cy="155" rx="210" ry="148" fill="none"
+                 stroke="#39ff7a" stroke-width="1" opacity="0.15"/>
+
+      </svg>
+    </div>
+
+    <!-- Data feed tiles -->
+    <div class="feed-strip">
+      <div class="feed-tile ft-offline" id="feed-cca">
+        <div class="ft-label">CCA SWARM</div>
+        <div class="ft-status" id="feed-cca-status">OFFLINE</div>
+        <div class="ft-sub">via RHSI/Skupper</div>
+      </div>
+      <div class="feed-tile ft-offline" id="feed-radar">
+        <div class="ft-label">GND RADAR</div>
+        <div class="ft-status" id="feed-radar-status">OFFLINE</div>
+        <div class="ft-sub">via RHSI/Skupper</div>
+      </div>
+      <div class="feed-tile ft-offline" id="feed-dome">
+        <div class="ft-label">GOLDEN DOME</div>
+        <div class="ft-status" id="feed-dome-status">OFFLINE</div>
+        <div class="ft-sub">via RHSI/Skupper</div>
+      </div>
+    </div>
+
+    <!-- Trigger / Approve buttons -->
+    <div class="trigger-area">
+      <button class="trigger-btn" id="trigger-btn"
+              onclick="doTrigger()">
+        ⚡ DETECT HYPERSONIC THREAT
+      </button>
+      <button class="approve-btn" id="approve-btn"
+              onclick="doApprove()" disabled>
+        ▶ APPROVE MANEUVER
+      </button>
+      <button class="reset-btn" id="reset-btn"
+              onclick="doReset()">
+        ↺ RESET
+      </button>
+    </div>
+
+  </section>
+
+  <!-- ── CENTER: Identity status (shared) ──────────────────────────── -->
+  <section class="panel panel-identity">
+
+    <div class="panel-header">
+      <span class="panel-title">IDENTITY STATUS</span>
+      <span class="panel-meta">ZTA POLICY: <strong id="policy-ver">zta-edge-v3</strong></span>
+    </div>
+
+    <div class="operator-cards" id="operator-cards">
+      <div class="op-card-skeleton"></div>
+      <div class="op-card-skeleton"></div>
+      <div class="op-card-skeleton"></div>
+      <div class="op-card-skeleton"></div>
+    </div>
+
+    <div class="identity-meta-grid">
+      <div class="meta-row">
+        <span class="meta-label">IDENTITY MODE</span>
+        <span class="meta-value ok" id="meta-mode">CLOUD SYNC</span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-label">LAST POLICY SYNC</span>
+        <span class="meta-value" id="meta-sync">--</span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-label">LOCAL K8S RBAC</span>
+        <span class="meta-value ok">● ENFORCING</span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-label">MICROSHIFT API</span>
+        <span class="meta-value ok">● READY</span>
+      </div>
+      <div class="meta-row">
+        <span class="meta-label">RHSI LINK</span>
+        <span class="meta-value ok" id="meta-rhsi">● CONNECTED</span>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ── RIGHT: RHSI feeds + AI inference log ──────────────────────── -->
+  <section class="panel panel-artifacts">
+
+    <div class="artifact-block">
+      <div class="artifact-hdr">
+        <span class="artifact-type">RHSI SKUPPER — DATA SOURCES</span>
+        <span class="artifact-src" id="rhsi-src">OCP GROUND STATION</span>
+      </div>
+      <pre class="artifact-code" id="rhsi-log">Skupper connectors — standby
+
+$ skupper connector list
+NAME                  HOST           PORT  STATUS
+cca-swarm-feed        ocp.corp.mil   9001  <span class="t-dim">waiting</span>
+gnd-radar-track       ocp.corp.mil   9002  <span class="t-dim">waiting</span>
+golden-dome-track     ocp.corp.mil   9003  <span class="t-dim">waiting</span></pre>
+    </div>
+
+    <div class="tile-divider-h"></div>
+
+    <div class="artifact-block">
+      <div class="artifact-hdr">
+        <span class="artifact-type">ONBOARD AI — phi-4-mini</span>
+        <span class="artifact-src" id="ai-src">IDLE</span>
+      </div>
+      <pre class="artifact-code" id="ai-log">Model: phi-4-mini (quantized, onboard)
+Size: 47.2 MB | Runtime: RHIVOS edge
+Status: ready — awaiting sensor data</pre>
+    </div>
+
+    <div class="tile-divider-h"></div>
+
+    <div class="artifact-block">
+      <div class="artifact-hdr">
+        <span class="artifact-type">EVENT LOG</span>
+        <span class="artifact-src" id="event-src">MONITORING</span>
+      </div>
+      <pre class="artifact-code event-log" id="event-log">Awaiting threat detection...</pre>
+    </div>
+
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <span>Red Hat, Inc. — rh-edge-node</span>
+  <span class="footer-sep">|</span>
+  <span>MicroShift 4.22 · RHEL 9.8 · UNCLASSIFIED // DEMO</span>
+</footer>
+
+<script>
+// ── Bogey trajectory ──────────────────────────────────────────────────
+// Starts top-right, arcs toward center reticle
+var BOGEY_PATH = [
+  {t: 2,  x: 360, y: 55},
+  {t: 8,  x: 320, y: 80},
+  {t: 14, x: 290, y: 105},
+  {t: 22, x: 265, y: 130},
+  {t: 35, x: 248, y: 148},
+];
+
+function bogeyPos(elapsed) {
+  if (elapsed < BOGEY_PATH[0].t) return {x: BOGEY_PATH[0].x, y: BOGEY_PATH[0].y};
+  for (var i = 1; i < BOGEY_PATH.length; i++) {
+    var a = BOGEY_PATH[i-1], b = BOGEY_PATH[i];
+    if (elapsed <= b.t) {
+      var pct = (elapsed - a.t) / (b.t - a.t);
+      return {x: a.x + (b.x - a.x) * pct, y: a.y + (b.y - a.y) * pct};
+    }
+  }
+  return {x: BOGEY_PATH[BOGEY_PATH.length-1].x, y: BOGEY_PATH[BOGEY_PATH.length-1].y};
+}
+
+// ── Feed tile helper ──────────────────────────────────────────────────
+function setFeed(id, state, label) {
+  var tile = document.getElementById('feed-' + id);
+  var stat = document.getElementById('feed-' + id + '-status');
+  if (!tile || !stat) return;
+  tile.className = 'feed-tile ft-' + state;
+  stat.textContent = label;
+}
+
+// ── RHSI log helper ───────────────────────────────────────────────────
+function rhsiLog(events) {
+  var el = document.getElementById('rhsi-log');
+  var src = document.getElementById('rhsi-src');
+  if (!el) return;
+  if (!events || !events.length) return;
+
+  src.textContent = 'ACTIVE';
+  var lines = ['Skupper connectors — active\n'];
+  var ccaStatus = '<span class="t-dim">waiting</span>';
+  var radarStatus = '<span class="t-dim">waiting</span>';
+  var domeStatus = '<span class="t-dim">waiting</span>';
+
+  events.forEach(function(ev) {
+    if (ev.msg.indexOf('cca-swarm') >= 0 && ev.msg.indexOf('FUSED') >= 0)
+      ccaStatus = '<span class="t-ok">connected</span>';
+    else if (ev.msg.indexOf('cca-swarm') >= 0)
+      ccaStatus = '<span class="t-changed">acquiring</span>';
+    if (ev.msg.indexOf('gnd-radar') >= 0 && ev.msg.indexOf('FUSED') >= 0)
+      radarStatus = '<span class="t-ok">connected</span>';
+    else if (ev.msg.indexOf('gnd-radar') >= 0)
+      radarStatus = '<span class="t-changed">acquiring</span>';
+    if (ev.msg.indexOf('golden-dome') >= 0)
+      domeStatus = '<span class="t-ok">connected</span>';
+  });
+
+  el.innerHTML = 'Skupper connectors\n\n' +
+    '$ skupper connector list\n' +
+    '<span class="t-bold">NAME                  STATUS</span>\n' +
+    '<span class="t-dim">──────────────────────────────────</span>\n' +
+    'cca-swarm-feed        ' + ccaStatus + '\n' +
+    'gnd-radar-track       ' + radarStatus + '\n' +
+    'golden-dome-track     ' + domeStatus;
+}
+
+// ── AI log helper ─────────────────────────────────────────────────────
+function aiLog(events, recReady, approved) {
+  var el = document.getElementById('ai-log');
+  var src = document.getElementById('ai-src');
+  if (!el) return;
+
+  var hasAI = events.some(function(e){ return e.source === 'AI'; });
+  if (!hasAI) {
+    el.innerHTML = 'Model: phi-4-mini (quantized, onboard)\nSize: 47.2 MB | Runtime: RHIVOS edge\nStatus: ready — awaiting sensor data';
+    src.textContent = 'IDLE';
+    return;
+  }
+
+  src.textContent = recReady ? 'COMPLETE' : 'RUNNING';
+  var html = 'Model: phi-4-mini (quantized, onboard)\n';
+  html += 'Sources fusing: CCA + GND_RADAR + GOLDEN_DOME\n\n';
+  if (recReady) {
+    html += '<span class="t-ok">Inference: COMPLETE — 187ms</span>\n';
+    html += '<span class="t-bold">RECOMMEND: BREAK LEFT · 4G · CHAFF ×2</span>\n';
+    html += '<span class="t-ok">Confidence: 97%</span>';
+    if (approved) {
+      html += '\n\n<span class="t-changed">APPROVED by pilot — CCA swarm executing</span>';
+    }
+  } else {
+    html += '<span class="t-changed">Processing... fusing 3 data sources</span>';
+  }
+  el.innerHTML = html;
+}
+
+// ── Event log helper ──────────────────────────────────────────────────
+function eventLog(events) {
+  var el = document.getElementById('event-log');
+  var src = document.getElementById('event-src');
+  if (!el || !events.length) return;
+  src.textContent = 'ACTIVE';
+  el.innerHTML = events.map(function(ev) {
+    var cls = ev.source === 'THREAT' ? 'log-warn' :
+              ev.source === 'RECOMMEND' ? 'log-ok' : 'log-info';
+    return '<span class="' + cls + '">[' + ev.source + '] ' + ev.msg + '</span>';
+  }).join('\n');
+}
+
+// ── Main update ───────────────────────────────────────────────────────
+function updateAll(data) {
+  var e = data.elapsed || 0;
+
+  // Link badge
+  var b = document.getElementById('link-badge');
+  if (b) {
+    b.className = 'header-link ' + (data.link === 'SEVERED' ? 'severed' : 'connected');
+    b.querySelector('.link-label').textContent = data.link;
+  }
+
+  // HUD status label
+  var lbl = document.getElementById('hud-status-label');
+  if (lbl) {
+    if (data.approved) lbl.textContent = 'THREAT NEUTRALIZED';
+    else if (data.rec_ready) lbl.textContent = 'MANEUVER READY';
+    else if (data.bogey_locked) lbl.textContent = 'LOCKED';
+    else if (data.bogey_tracking) lbl.textContent = 'TRACKING';
+    else if (data.bogey_visible) lbl.textContent = '⚠ THREAT DETECTED';
+    else lbl.textContent = 'NOMINAL';
+    lbl.style.color = data.bogey_visible && !data.approved ? '#ff4444' : '#888';
+  }
+
+  // Bogey
+  var bg = document.getElementById('bogey-group');
+  if (bg) {
+    if (data.bogey_visible) {
+      bg.style.display = '';
+      var pos = bogeyPos(e);
+      bg.setAttribute('transform', 'translate(' + pos.x + ',' + pos.y + ')');
+
+      var sym = document.getElementById('bogey-sym');
+      var lb  = document.getElementById('lock-box');
+      var rng = document.getElementById('bogey-range');
+
+      if (sym) {
+        sym.className.baseVal = 'bogey-sym' +
+          (data.bogey_neutralized ? ' neutralized' : data.bogey_locked ? ' locked' : '');
+      }
+      if (lb) {
+        if (data.bogey_tracking) {
+          lb.style.display = '';
+          lb.className.baseVal = 'lock-box' +
+            (data.bogey_neutralized ? ' neutralized' : data.bogey_locked ? ' solid' : '');
+        } else {
+          lb.style.display = 'none';
+        }
+      }
+      if (rng) rng.style.display = data.bogey_tracking ? '' : 'none';
+    } else {
+      bg.style.display = 'none';
+    }
+  }
+
+  // Neutralized label
+  var nl = document.getElementById('neutralized-label');
+  if (nl) nl.style.display = data.bogey_neutralized ? '' : 'none';
+
+  // CCA swarm lines
+  var swarm = document.getElementById('cca-swarm');
+  if (swarm) {
+    swarm.style.display = data.approved ? '' : 'none';
+    if (data.approved) {
+      var delay = data.approved_elapsed || 0;
+      ['cca1','cca2','cca3','cca4','cca5','cca6'].forEach(function(id, i) {
+        var line = document.getElementById(id);
+        if (line) line.className = delay > i * 0.4 ? 'cca-line active' : 'cca-line';
+      });
+    }
+  }
+
+  // Recommendation overlay
+  var rec = document.getElementById('rec-box');
+  if (rec) rec.className = 'rec-box' + (data.rec_ready && !data.approved ? ' visible' : '');
+
+  // G meter (rises on approve)
+  var gv = document.getElementById('g-val');
+  if (gv && data.approved) {
+    var ae = data.approved_elapsed || 0;
+    var g = ae < 2 ? 2.4 + ae * 0.8 : ae < 5 ? 4.0 : Math.max(2.4, 4.0 - (ae - 5) * 0.5);
+    gv.textContent = g.toFixed(1);
+    gv.setAttribute('fill', g > 3.5 ? 'var(--hud-warn)' : 'var(--hud)');
+  }
+
+  // Feed tiles
+  var feedMap = {cca: data.feed_cca, radar: data.feed_radar, dome: data.feed_dome};
+  var feedLabels = {offline: 'OFFLINE', acquiring: 'ACQUIRING...', fused: '● FUSED'};
+  Object.keys(feedMap).forEach(function(k) {
+    setFeed(k, feedMap[k], feedLabels[feedMap[k]] || 'OFFLINE');
+  });
+
+  // Approve button
+  var ab = document.getElementById('approve-btn');
+  if (ab) {
+    if (data.approved) {
+      ab.className = 'approve-btn executed';
+      ab.textContent = '✓ MANEUVER EXECUTED';
+      ab.disabled = true;
+    } else if (data.approve_active) {
+      ab.className = 'approve-btn ready';
+      ab.disabled = false;
+    } else {
+      ab.className = 'approve-btn';
+      ab.disabled = true;
+    }
+  }
+
+  // Logs
+  rhsiLog(data.feed_events || []);
+  aiLog(data.feed_events || [], data.rec_ready, data.approved);
+  if (data.feed_events && data.feed_events.length) eventLog(data.feed_events);
+
+  // Identity meta (shared)
+  var modeEl = document.getElementById('meta-mode');
+  if (modeEl) {
+    modeEl.textContent = data.mode === 'LOCAL' ? 'LOCAL AUTONOMOUS' : 'CLOUD SYNC';
+    modeEl.className = 'meta-value ' + (data.mode === 'LOCAL' ? 'warn' : 'ok');
+  }
+  var syncEl = document.getElementById('meta-sync');
+  if (syncEl) {
+    var age = data.last_sync_age_s || 0;
+    syncEl.textContent = age + 's ago';
+  }
+
+  // Operator cards (shared identity)
+  updateOperatorCards(data.operators || [], data.mode);
+}
+
+// ── Operator cards (same as S1) ───────────────────────────────────────
+var CALLSIGN_ICON = {ALPHA:'◈', BRAVO:'◉', CHARLIE:'◎', DELTA:'⊕'};
+function updateOperatorCards(operators, mode) {
+  var el = document.getElementById('operator-cards');
+  if (!el || !operators.length) return;
+  el.innerHTML = operators.map(function(op) {
+    var authed = op.authenticated;
+    var ttl = op.token_expires_in || 0;
+    var ttlPct = Math.min(100, (ttl / (mode === 'LOCAL' ? 3600 : 300)) * 100);
+    return '<div class="op-card' + (authed ? ' authed' : ' pending') + '">' +
+      '<div class="op-icon">' + (CALLSIGN_ICON[op.callsign] || '●') + '</div>' +
+      '<div class="op-info">' +
+        '<div class="op-callsign">' + op.callsign + '</div>' +
+        '<div class="op-role">' + op.role + '</div>' +
+        '<div class="op-clearance">' + op.clearance + '</div>' +
+      '</div>' +
+      '<div class="op-status">' +
+        '<div class="op-dot ' + (authed ? 'dot-green' : 'dot-grey') + '"></div>' +
+        '<div class="op-ttl-bar"><div class="op-ttl-fill" style="width:' + ttlPct + '%"></div></div>' +
+        '<div class="op-ttl-label">' + (authed ? ttl + 's' : 'PENDING') + '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+// ── API calls ─────────────────────────────────────────────────────────
+function poll() {
+  fetch('/api/status/3')
+    .then(function(r){ return r.json(); })
+    .then(function(d){ updateAll(d); })
+    .catch(function(){});
+}
+
+function doTrigger() {
+  fetch('/api/trigger/3', {method:'POST'}).then(poll);
+}
+
+function doApprove() {
+  fetch('/api/approve/3', {method:'POST'}).then(poll);
+}
+
+function doReset() {
+  fetch('/api/reset/3', {method:'POST'}).then(function(){
+    // Reset UI
+    document.getElementById('approve-btn').className = 'approve-btn';
+    document.getElementById('approve-btn').disabled = true;
+    document.getElementById('approve-btn').textContent = '▶ APPROVE MANEUVER';
+    poll();
+  });
+}
+
+setInterval(poll, 1500);
+poll();
+</script>
+
+</body>
+</html>

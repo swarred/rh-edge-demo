@@ -50,6 +50,16 @@ html, body { height: 100%; background: var(--bg); color: var(--text);
                    padding: 2px 6px; border-radius: 3px; }
 .scenario-name   { font-size: 12px; color: var(--muted); letter-spacing: .03em; }
 
+/* ── Scenario nav ───────────────────────────────────────────────── */
+.scenario-nav { display: flex; gap: 6px; align-items: center; margin-left: auto; flex-shrink: 0; }
+.snav-link {
+  padding: 3px 10px; border-radius: 3px; border: 1px solid var(--border);
+  color: var(--muted); text-decoration: none; font-family: var(--font-m);
+  font-size: 10px; font-weight: 600; letter-spacing: .05em; transition: all .2s;
+}
+.snav-link:hover { border-color: #666; color: var(--text); }
+.snav-link.active { border-color: var(--red); color: var(--red); background: rgba(238,0,0,.08); }
+
 .header-link { display: flex; align-items: center; gap: 5px; flex-shrink: 0;
                font-family: var(--font-m); font-size: 11px; font-weight: 600;
                padding: 4px 10px; border-radius: 4px; letter-spacing: .08em; }
