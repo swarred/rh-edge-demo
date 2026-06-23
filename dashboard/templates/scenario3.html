@@ -439,15 +439,16 @@ function rhsiLog(events) {
   var domeStatus = '<span class="t-dim">waiting</span>';
 
   events.forEach(function(ev) {
-    if (ev.msg.indexOf('cca-swarm') >= 0 && ev.msg.indexOf('FUSED') >= 0)
+    var m = ev.msg.toLowerCase();
+    if (m.indexOf('cca-swarm') >= 0 && m.indexOf('fused') >= 0)
       ccaStatus = '<span class="t-ok">connected</span>';
-    else if (ev.msg.indexOf('cca-swarm') >= 0)
+    else if (m.indexOf('cca-swarm') >= 0)
       ccaStatus = '<span class="t-changed">acquiring</span>';
-    if (ev.msg.indexOf('gnd-radar') >= 0 && ev.msg.indexOf('FUSED') >= 0)
+    if (m.indexOf('gnd-radar') >= 0 && m.indexOf('fused') >= 0)
       radarStatus = '<span class="t-ok">connected</span>';
-    else if (ev.msg.indexOf('gnd-radar') >= 0)
+    else if (m.indexOf('gnd-radar') >= 0)
       radarStatus = '<span class="t-changed">acquiring</span>';
-    if (ev.msg.indexOf('golden-dome') >= 0)
+    if (m.indexOf('golden-dome') >= 0)
       domeStatus = '<span class="t-ok">connected</span>';
   });
 
