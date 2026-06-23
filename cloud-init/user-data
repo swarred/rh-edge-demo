@@ -1,0 +1,25 @@
+#cloud-config
+
+# VM credentials
+ssh_pwauth: true
+chpasswd:
+  expire: false
+  users:
+    - name: demo
+      password: redhat
+      type: text
+
+# Drop RHSI skupper token (injected by automation — do not commit real token)
+write_files:
+  - path: /etc/skupper/token.yaml
+    content: |
+      # PLACEHOLDER — replaced by automation at deploy time
+      # ansible role: deploy-vm will write the real token here
+    permissions: '0600'
+
+  - path: /var/lib/rh-edge-demo/.keep
+    content: ""
+
+runcmd:
+  - mkdir -p /var/lib/rh-edge-demo
+  - systemctl daemon-reload

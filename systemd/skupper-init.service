@@ -1,0 +1,22 @@
+[Unit]
+Description=Skupper RHSI Init — Apply site and redeem token
+After=microshift.service network-online.target
+Wants=network-online.target
+ConditionPathExists=/etc/skupper/token.yaml
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStartPre=/usr/bin/sleep 5
+ExecStart=/bin/bash -c '\
+    export KUBECONFIG=/var/lib/microshift/resources/kubeadmin/kubeconfig && \
+    skupper system apply /etc/skupper/site.yaml && \
+    skupper system start && \
+    /usr/bin/sleep 5 && \
+    skupper token redeem /etc/skupper/token.yaml && \
+    skupper system apply /etc/skupper/connector.yaml && \
+    skupper system reload && \
+    touch /run/skupper-init-complete'
+
+[Install]
+WantedBy=multi-user.target

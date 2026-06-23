@@ -1,0 +1,8 @@
+apiVersion: skupper.io/v2alpha1
+kind: AccessGrant
+metadata:
+  name: edge-node-token
+  namespace: jtac-ops
+spec:
+  redemptionsAllowed: 20
+  expirationWindow: 168h

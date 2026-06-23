@@ -1,0 +1,7 @@
+apiVersion: skupper.io/v2alpha1
+kind: Site
+metadata:
+  name: rh-edge-node
+  namespace: jtac-ops
+spec:
+  linkAccess: none

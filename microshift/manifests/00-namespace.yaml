@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: jtac-ops
+  labels:
+    app.kubernetes.io/part-of: rh-edge-demo
+    scenario: s1-ddil-identity

@@ -1,0 +1,99 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: identity-service
+  namespace: jtac-ops
+---
+# Identity service needs to read ServiceAccounts and ConfigMaps
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: identity-service-role
+rules:
+  - apiGroups: [""]
+    resources: ["serviceaccounts", "configmaps"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["authorization.k8s.io"]
+    resources: ["subjectaccessreviews"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: identity-service-binding
+subjects:
+  - kind: ServiceAccount
+    name: identity-service
+    namespace: jtac-ops
+roleRef:
+  kind: ClusterRole
+  name: identity-service-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: identity-service
+  namespace: jtac-ops
+  labels:
+    app: identity-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: identity-service
+  template:
+    metadata:
+      labels:
+        app: identity-service
+    spec:
+      serviceAccountName: identity-service
+      containers:
+        - name: identity-service
+          image: localhost/identity-service:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 5000
+          env:
+            - name: KUBECONFIG
+              value: /var/lib/microshift/resources/kubeadmin/kubeconfig
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: edge-secrets
+                  key: jwt-secret
+                  optional: true
+          volumeMounts:
+            - name: kubeconfig
+              mountPath: /var/lib/microshift/resources/kubeadmin
+              readOnly: true
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "200m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: kubeconfig
+          hostPath:
+            path: /var/lib/microshift/resources/kubeadmin
+            type: Directory
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: identity-service
+  namespace: jtac-ops
+spec:
+  selector:
+    app: identity-service
+  ports:
+    - port: 5000
+      targetPort: 5000

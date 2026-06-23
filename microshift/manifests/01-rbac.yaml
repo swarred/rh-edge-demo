@@ -1,0 +1,205 @@
+# ── Operator service accounts ────────────────────────────────────────
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: operator-alpha
+  namespace: jtac-ops
+  annotations:
+    edge.redhat.com/callsign: "ALPHA"
+    edge.redhat.com/role: "Fire Control Specialist"
+    edge.redhat.com/clearance: "SECRET"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: operator-bravo
+  namespace: jtac-ops
+  annotations:
+    edge.redhat.com/callsign: "BRAVO"
+    edge.redhat.com/role: "ROE Cache Officer"
+    edge.redhat.com/clearance: "SECRET"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: operator-charlie
+  namespace: jtac-ops
+  annotations:
+    edge.redhat.com/callsign: "CHARLIE"
+    edge.redhat.com/role: "Drone Relay Operator"
+    edge.redhat.com/clearance: "SECRET"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: operator-delta
+  namespace: jtac-ops
+  annotations:
+    edge.redhat.com/callsign: "DELTA"
+    edge.redhat.com/role: "Mission Commander"
+    edge.redhat.com/clearance: "TS/SCI"
+---
+# ── ClusterRoles — scoped to mission capabilities ────────────────────
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: targeting-specialist
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["targeting-data", "strike-package"]
+    verbs: ["get", "list", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["roe-cache", "golden-dome-policy"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: roe-officer
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["roe-cache", "golden-dome-policy"]
+    verbs: ["get", "list", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["targeting-data"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: drone-relay-operator
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["drone-mesh-status", "relay-config"]
+    verbs: ["get", "list", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["targeting-data"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: mission-commander
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    resourceNames: ["mission-status", "command-log"]
+    verbs: ["get", "list", "create", "update", "patch"]
+  - apiGroups: [""]
+    resources: ["serviceaccounts"]
+    verbs: ["get", "list"]
+---
+# ── ClusterRoleBindings ───────────────────────────────────────────────
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: operator-alpha-binding
+subjects:
+  - kind: ServiceAccount
+    name: operator-alpha
+    namespace: jtac-ops
+roleRef:
+  kind: ClusterRole
+  name: targeting-specialist
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: operator-bravo-binding
+subjects:
+  - kind: ServiceAccount
+    name: operator-bravo
+    namespace: jtac-ops
+roleRef:
+  kind: ClusterRole
+  name: roe-officer
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: operator-charlie-binding
+subjects:
+  - kind: ServiceAccount
+    name: operator-charlie
+    namespace: jtac-ops
+roleRef:
+  kind: ClusterRole
+  name: drone-relay-operator
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: operator-delta-binding
+subjects:
+  - kind: ServiceAccount
+    name: operator-delta
+    namespace: jtac-ops
+roleRef:
+  kind: ClusterRole
+  name: mission-commander
+  apiGroup: rbac.authorization.k8s.io
+---
+# ── Mission data ConfigMaps (the resources operators act on) ─────────
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: targeting-data
+  namespace: jtac-ops
+data:
+  status: "active"
+  grid-ref: "38SMB1234567890"
+  target-type: "mobile-armor"
+  last-updated: "boot"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: roe-cache
+  namespace: jtac-ops
+data:
+  version: "v3.1"
+  collateral-damage-estimate: "LOW"
+  authority: "COMJTF"
+  valid-until: "48h"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: drone-mesh-status
+  namespace: jtac-ops
+data:
+  nodes-online: "6"
+  relay-active: "true"
+  bandwidth: "12Mbps"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: golden-dome-policy
+  namespace: jtac-ops
+data:
+  version: "2026-06-22"
+  threat-level: "ELEVATED"
+  intercept-authority: "AUTONOMOUS"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mission-status
+  namespace: jtac-ops
+data:
+  phase: "ACTIVE"
+  link: "CONNECTED"
+  mode: "CLOUD"

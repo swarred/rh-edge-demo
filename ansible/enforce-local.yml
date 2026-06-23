@@ -1,0 +1,53 @@
+---
+- name: Enforce local ZTA policy in DDIL mode
+  hosts: localhost
+  connection: local
+  gather_facts: true
+
+  vars:
+    identity_service_url: "http://localhost:5000"
+    kubectl: "/usr/bin/kubectl --kubeconfig=/var/lib/microshift/resources/kubeadmin/kubeconfig"
+
+  tasks:
+    - name: Set identity-service to LOCAL mode
+      uri:
+        url: "{{ identity_service_url }}/mode"
+        method: POST
+        body_format: json
+        body:
+          mode: "LOCAL"
+        status_code: 200
+
+    - name: Extend operator token TTL via auth-all
+      uri:
+        url: "{{ identity_service_url }}/operators/auth-all"
+        method: POST
+        status_code: 200
+
+    - name: Snapshot golden-dome-policy ConfigMap to local file
+      command: >
+        {{ kubectl }} get configmap golden-dome-policy
+        -n jtac-ops -o yaml
+      register: policy_snapshot
+      ignore_errors: true
+
+    - name: Write policy snapshot to local storage
+      copy:
+        content: "{{ policy_snapshot.stdout }}"
+        dest: /var/lib/rh-edge-demo/golden-dome-policy-snapshot.yaml
+      when: policy_snapshot.rc == 0
+
+    - name: Update mission-status ConfigMap — link severed
+      command: >
+        {{ kubectl }} patch configmap mission-status
+        -n jtac-ops
+        --type=merge
+        -p '{"data":{"link":"SEVERED","mode":"LOCAL"}}'
+      ignore_errors: true
+
+    - name: Notify dashboard of mode change
+      uri:
+        url: "http://localhost:8888/api/trigger"
+        method: POST
+        status_code: 200
+      ignore_errors: true

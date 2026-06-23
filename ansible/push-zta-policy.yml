@@ -1,0 +1,52 @@
+---
+- name: Push ZTA policy update from OCP on link restore
+  hosts: localhost
+  connection: local
+  gather_facts: true
+
+  vars:
+    identity_service_url: "http://localhost:5000"
+    kubectl: "/usr/bin/kubectl --kubeconfig=/var/lib/microshift/resources/kubeadmin/kubeconfig"
+    policy_version: "zta-edge-v3"
+
+  tasks:
+    - name: Verify MicroShift API is reachable
+      command: "{{ kubectl }} get namespace jtac-ops"
+      register: api_check
+
+    - name: Apply updated roe-cache ConfigMap
+      command: >
+        {{ kubectl }} patch configmap roe-cache
+        -n jtac-ops
+        --type=merge
+        -p '{"data":{"version":"{{ policy_version }}","valid-until":"48h"}}'
+      when: api_check.rc == 0
+
+    - name: Refresh operator token TTLs in CLOUD mode
+      uri:
+        url: "{{ identity_service_url }}/operators/auth-all"
+        method: POST
+        status_code: 200
+
+    - name: Sync policy version to identity-service
+      uri:
+        url: "{{ identity_service_url }}/policy/sync"
+        method: POST
+        body_format: json
+        body:
+          version: "{{ policy_version }}"
+        status_code: 200
+
+    - name: Update mission-status ConfigMap — link restored
+      command: >
+        {{ kubectl }} patch configmap mission-status
+        -n jtac-ops
+        --type=merge
+        -p '{"data":{"link":"CONNECTED","mode":"CLOUD"}}'
+
+    - name: Notify dashboard of mode restore
+      uri:
+        url: "http://localhost:8888/api/reset"
+        method: POST
+        status_code: 200
+      ignore_errors: true

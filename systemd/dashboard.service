@@ -1,0 +1,18 @@
+[Unit]
+Description=RH Edge Dashboard
+After=identity-service.service network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/gunicorn \
+    --bind 0.0.0.0:8888 \
+    --workers 1 \
+    --threads 4 \
+    --chdir /opt/dashboard \
+    app:app
+Environment=IDENTITY_SERVICE_URL=http://localhost:5000
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,19 @@
+[Unit]
+Description=RH Edge Identity Service
+After=microshift.service network.target
+Requires=microshift.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/gunicorn \
+    --bind 0.0.0.0:5000 \
+    --workers 1 \
+    --threads 4 \
+    --chdir /opt/identity-service \
+    app:app
+Environment=KUBECONFIG=/var/lib/microshift/resources/kubeadmin/kubeconfig
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

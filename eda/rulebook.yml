@@ -1,0 +1,28 @@
+---
+- name: JTAC Edge — DDIL Identity Continuity Rulebook
+  hosts: localhost
+  gather_facts: false
+
+  sources:
+    - ansible.eda.url_check:
+        urls:
+          - "{{ rhsi_health_url | default('http://localhost:8080/healthz') }}"
+        delay: 10
+        verify_ssl: false
+
+  rules:
+    - name: DDIL Detected — RHSI link lost
+      condition: event.url_check.status == "down"
+      action:
+        run_playbook:
+          name: /opt/ansible/enforce-local.yml
+          extra_vars:
+            trigger_reason: "RHSI link health check failed"
+
+    - name: Link Restored — sync policy from OCP
+      condition: event.url_check.status == "up" and vars.previous_status == "down"
+      action:
+        run_playbook:
+          name: /opt/ansible/push-zta-policy.yml
+          extra_vars:
+            trigger_reason: "RHSI link restored"

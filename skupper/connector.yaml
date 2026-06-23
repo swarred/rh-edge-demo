@@ -1,0 +1,9 @@
+apiVersion: skupper.io/v2alpha1
+kind: Connector
+metadata:
+  name: identity-gateway
+  namespace: jtac-ops
+spec:
+  routingKey: identity-gateway
+  port: 5000
+  selector: app=identity-service
