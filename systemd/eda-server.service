@@ -8,7 +8,7 @@ ExecStart=/usr/local/bin/ansible-rulebook \
     --rulebook /opt/eda/rulebook.yml \
     --inventory localhost, \
     --verbose
-Environment=RHSI_HEALTH_URL=http://localhost:8080/healthz
+Environment=RHSI_HEALTH_URL=http://localhost:9090/healthz
 Restart=on-failure
 RestartSec=15
 

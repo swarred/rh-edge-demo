@@ -6,7 +6,7 @@
   sources:
     - ansible.eda.url_check:
         urls:
-          - "{{ rhsi_health_url | default('http://localhost:8080/healthz') }}"
+          - "{{ rhsi_health_url | default('http://localhost:9090/healthz') }}"
         delay: 10
         verify_ssl: false
 
