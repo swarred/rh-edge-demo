@@ -148,7 +148,7 @@
   </div>
 </header>
 
-<main class="main-layout">
+<main class="main-layout" style="grid-template-columns: 2fr 420px;">
 
   <!-- ── LEFT: HMDS Visor ──────────────────────────────────────────── -->
   <section class="panel panel-scene" style="padding:8px 8px 4px;">
@@ -340,46 +340,6 @@
               onclick="doReset()">
         ↺ RESET
       </button>
-    </div>
-
-  </section>
-
-  <!-- ── CENTER: Identity status (shared) ──────────────────────────── -->
-  <section class="panel panel-identity">
-
-    <div class="panel-header">
-      <span class="panel-title">IDENTITY STATUS</span>
-      <span class="panel-meta">ZTA POLICY: <strong id="policy-ver">zta-edge-v3</strong></span>
-    </div>
-
-    <div class="operator-cards" id="operator-cards">
-      <div class="op-card-skeleton"></div>
-      <div class="op-card-skeleton"></div>
-      <div class="op-card-skeleton"></div>
-      <div class="op-card-skeleton"></div>
-    </div>
-
-    <div class="identity-meta-grid">
-      <div class="meta-row">
-        <span class="meta-label">IDENTITY MODE</span>
-        <span class="meta-value ok" id="meta-mode">CLOUD SYNC</span>
-      </div>
-      <div class="meta-row">
-        <span class="meta-label">LAST POLICY SYNC</span>
-        <span class="meta-value" id="meta-sync">--</span>
-      </div>
-      <div class="meta-row">
-        <span class="meta-label">LOCAL K8S RBAC</span>
-        <span class="meta-value ok">● ENFORCING</span>
-      </div>
-      <div class="meta-row">
-        <span class="meta-label">MICROSHIFT API</span>
-        <span class="meta-value ok">● READY</span>
-      </div>
-      <div class="meta-row">
-        <span class="meta-label">RHSI LINK</span>
-        <span class="meta-value ok" id="meta-rhsi">● CONNECTED</span>
-      </div>
     </div>
 
   </section>
