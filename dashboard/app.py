@@ -70,7 +70,7 @@ _S4_STEPS = [
     (12, "PACAF",    "PACAF-TOC-001: verified track received"),
     (15, "NAVY",     "USS-BURKE-DDG: SPY-6 radar cueing initiated"),
     (18, "JTAC",     "JTAC-FWD-001: track received — operators alerted"),
-    (21, "DOME",     "GOLDEN-DOME-BTY: OPIR track correlated — intercept solution computed"),
+    (21, "DOME",     "INTERCEPT-BTY: OPIR track correlated — intercept solution computed"),
     (23, "COMPLETE", "DISSEMINATION COMPLETE — 7.8s · 4 nodes notified"),
 ]
 

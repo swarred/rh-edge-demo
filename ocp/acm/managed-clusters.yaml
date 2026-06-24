@@ -19,7 +19,7 @@ metadata:
     cloud: Other
     domain: orbital
     location: LEO
-    mission: golden-dome-sensing
+    mission: orbital-opir-sensing
     platform: RHEL-Image-Mode
   annotations:
     open-cluster-management/created-via: demo
@@ -75,7 +75,7 @@ spec:
 apiVersion: cluster.open-cluster-management.io/v1
 kind: ManagedCluster
 metadata:
-  name: golden-dome-bty
+  name: intercept-bty
   labels:
     cluster.open-cluster-management.io/clusterset: mission-edge
     vendor: MicroShift
