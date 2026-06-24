@@ -1,0 +1,123 @@
+# ── ACM Demo Fleet — ManagedCluster stubs ────────────────────────────
+# Apply after ACM MultiClusterHub is Running:
+#   oc apply -f managed-clusters.yaml
+#
+# local-cluster (OCP hub) is created automatically by ACM.
+# These stubs represent the mission edge fleet for Scenario 4.
+# They show as Offline/Unknown in the fleet view — visually correct
+# for a demo showing space/edge nodes that are intermittently connected.
+
+---
+# Satellite edge node — PWSA-07 LEO orbital
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  name: sat-edge-01
+  labels:
+    cluster.open-cluster-management.io/clusterset: mission-edge
+    vendor: MicroShift
+    cloud: Other
+    domain: orbital
+    location: LEO
+    mission: golden-dome-sensing
+    platform: RHEL-Image-Mode
+  annotations:
+    open-cluster-management/created-via: demo
+    description: "PWSA-07 LEO orbital edge node — phi-4-mini onboard"
+spec:
+  hubAcceptsClient: true
+  leaseDurationSeconds: 60
+
+---
+# PACAF TOC — Hickam AFB ground station
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  name: pacaf-toc-001
+  labels:
+    cluster.open-cluster-management.io/clusterset: mission-edge
+    vendor: OpenShift
+    cloud: Other
+    domain: ground-station
+    location: hickam-afb-hi
+    mission: c2-operations
+    platform: OCP
+  annotations:
+    open-cluster-management/created-via: demo
+    description: "PACAF TOC — Hickam AFB, Hawaii — C2 operations center"
+spec:
+  hubAcceptsClient: true
+  leaseDurationSeconds: 60
+
+---
+# USS Arleigh Burke DDG — SPY-6 radar
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  name: uss-burke-ddg
+  labels:
+    cluster.open-cluster-management.io/clusterset: mission-edge
+    vendor: MicroShift
+    cloud: Other
+    domain: maritime-edge
+    location: western-pacific
+    mission: spy6-radar-fusion
+    platform: RHEL-Image-Mode
+  annotations:
+    open-cluster-management/created-via: demo
+    description: "USS Arleigh Burke DDG — SPY-6 radar cueing node"
+spec:
+  hubAcceptsClient: true
+  leaseDurationSeconds: 60
+
+---
+# Golden Dome intercept battery
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  name: golden-dome-bty
+  labels:
+    cluster.open-cluster-management.io/clusterset: mission-edge
+    vendor: MicroShift
+    cloud: Other
+    domain: intercept-battery
+    location: pacific-theater
+    mission: intercept-compute
+    platform: RHEL-Image-Mode
+  annotations:
+    open-cluster-management/created-via: demo
+    description: "Golden Dome intercept battery — autonomous intercept solution compute"
+spec:
+  hubAcceptsClient: true
+  leaseDurationSeconds: 60
+
+---
+# JTAC forward edge node — Scenario 1 edge kit
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  name: rh-edge-node
+  labels:
+    cluster.open-cluster-management.io/clusterset: mission-edge
+    vendor: MicroShift
+    cloud: Other
+    domain: tactical-edge
+    location: indopacom-forward
+    mission: jtac-identity-continuity
+    platform: RHEL-Image-Mode
+  annotations:
+    open-cluster-management/created-via: demo
+    description: "JTAC field edge kit — MicroShift 4.22, DDIL identity continuity"
+spec:
+  hubAcceptsClient: true
+  leaseDurationSeconds: 60
+
+---
+# ── ManagedClusterSet — groups all mission edge nodes ────────────────
+apiVersion: cluster.open-cluster-management.io/v1beta2
+kind: ManagedClusterSet
+metadata:
+  name: mission-edge
+spec:
+  clusterSelector:
+    selectorType: LegacyClusterSetLabel
