@@ -553,14 +553,14 @@ function updateRhsiLog(data) {
   if (src) src.textContent = data.rhsi_up ? 'ACTIVE' : 'ESTABLISHING';
   var html = 'Satellite: PWSA-07 (RHEL Image Mode)\n';
   html += 'phi-4-mini: ' + (data.ai_complete ?
-    '<span class="t-ok">HYPERSONIC_GLIDE — 94% conf</span>' :
+    '<span class="t-ok">UNKNOWN_THREAT — 94% conf</span>' :
     (data.sat_over_aoi ? '<span class="t-changed">processing...</span>' : 'standby')) + '\n\n';
 
   html += 'Space-to-ground Skupper connectors:\n';
   html += '  pacaf-toc-feed    ' + (data.node_pacaf ? '<span class="t-ok">● connected</span>' : (data.rhsi_up ? '<span class="t-changed">acquiring</span>' : '<span class="t-dim">waiting</span>')) + '\n';
   html += '  burke-spy6-feed   ' + (data.node_burke ? '<span class="t-ok">● connected</span>' : (data.rhsi_up ? '<span class="t-changed">acquiring</span>' : '<span class="t-dim">waiting</span>')) + '\n';
   html += '  jtac-fwd-feed     ' + (data.node_jtac  ? '<span class="t-ok">● connected</span>' : (data.rhsi_up ? '<span class="t-changed">acquiring</span>' : '<span class="t-dim">waiting</span>')) + '\n';
-  html += '  golden-dome-feed  ' + (data.node_dome  ? '<span class="t-ok">● connected</span>' : (data.rhsi_up ? '<span class="t-changed">acquiring</span>' : '<span class="t-dim">waiting</span>'));
+  html += '  opir-feed         ' + (data.node_dome  ? '<span class="t-ok">● connected</span>' : (data.rhsi_up ? '<span class="t-changed">acquiring</span>' : '<span class="t-dim">waiting</span>'));
   el.innerHTML = html;
 }
 
@@ -574,7 +574,7 @@ function updateAll(data) {
     if (data.complete)        { lbl.textContent = '✓ DISSEMINATION COMPLETE'; lbl.style.color='#39ff7a'; }
     else if (data.rhsi_up)    { lbl.textContent = 'TRACK DISSEMINATING';      lbl.style.color='#39ff7a'; }
     else if (data.ai_complete){ lbl.textContent = 'AI: CLASSIFIED';           lbl.style.color='#ffcc00'; }
-    else if (data.sat_over_aoi){ lbl.textContent = '⚠ HGV DETECTED';         lbl.style.color='#ff4444'; }
+    else if (data.sat_over_aoi){ lbl.textContent = '⚠ UNKNOWN THREAT';        lbl.style.color='#ff4444'; }
     else if (data.triggered)  { lbl.textContent = 'ORBITAL PASS';             lbl.style.color='#888'; }
     else                      { lbl.textContent = 'MONITORING';               lbl.style.color='#888'; }
   }

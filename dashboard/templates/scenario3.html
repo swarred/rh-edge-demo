@@ -321,7 +321,7 @@
         <div class="ft-sub">via RHSI/Skupper</div>
       </div>
       <div class="feed-tile ft-offline" id="feed-dome">
-        <div class="ft-label">GOLDEN DOME</div>
+        <div class="ft-label">OPIR TRACK</div>
         <div class="ft-status" id="feed-dome-status">OFFLINE</div>
         <div class="ft-sub">via RHSI/Skupper</div>
       </div>
@@ -331,7 +331,7 @@
     <div class="trigger-area">
       <button class="trigger-btn" id="trigger-btn"
               onclick="doTrigger()">
-        ⚡ DETECT HYPERSONIC THREAT
+        ⚡ DETECT UNKNOWN THREAT
       </button>
       <button class="approve-btn" id="approve-btn"
               onclick="doApprove()" disabled>
@@ -359,7 +359,7 @@ $ skupper connector list
 NAME                  HOST           PORT  STATUS
 cca-swarm-feed        ocp.corp.mil   9001  <span class="t-dim">waiting</span>
 gnd-radar-track       ocp.corp.mil   9002  <span class="t-dim">waiting</span>
-golden-dome-track     ocp.corp.mil   9003  <span class="t-dim">waiting</span></pre>
+opir-track            ocp.corp.mil   9003  <span class="t-dim">waiting</span></pre>
     </div>
 
     <div class="tile-divider-h"></div>
@@ -449,7 +449,7 @@ function rhsiLog(events) {
       radarStatus = '<span class="t-ok">connected</span>';
     else if (m.indexOf('gnd-radar') >= 0)
       radarStatus = '<span class="t-changed">acquiring</span>';
-    if (m.indexOf('golden-dome') >= 0)
+    if (m.indexOf('opir') >= 0)
       domeStatus = '<span class="t-ok">connected</span>';
   });
 
@@ -459,7 +459,7 @@ function rhsiLog(events) {
     '<span class="t-dim">──────────────────────────────────</span>\n' +
     'cca-swarm-feed        ' + ccaStatus + '\n' +
     'gnd-radar-track       ' + radarStatus + '\n' +
-    'golden-dome-track     ' + domeStatus;
+    'opir-track            ' + domeStatus;
 }
 
 // ── AI log helper ─────────────────────────────────────────────────────

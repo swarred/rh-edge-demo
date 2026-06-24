@@ -64,24 +64,24 @@ _ANSIBLE_CLOUD = [
 # ── S4 dissemination steps ───────────────────────────────────────────
 _S4_STEPS = [
     (0,  "SAT",      "PWSA-07: orbital pass — approaching AOI"),
-    (3,  "DETECT",   "HGV salvo detected — 3 tracks acquired"),
-    (6,  "AI",       "phi-4-mini (RHEL Image Mode): HYPERSONIC_GLIDE — 94% conf"),
+    (3,  "DETECT",   "Unknown threat detected — 3 tracks acquired"),
+    (6,  "AI",       "phi-4-mini (RHEL Image Mode): UNKNOWN_THREAT — 94% conf"),
     (9,  "RHSI",     "Space-to-ground Skupper link established"),
     (12, "PACAF",    "PACAF-TOC-001: verified track received"),
     (15, "NAVY",     "USS-BURKE-DDG: SPY-6 radar cueing initiated"),
     (18, "JTAC",     "JTAC-FWD-001: track received — operators alerted"),
-    (21, "DOME",     "GOLDEN-DOME-BTY: intercept solution computed"),
+    (21, "DOME",     "GOLDEN-DOME-BTY: OPIR track correlated — intercept solution computed"),
     (23, "COMPLETE", "DISSEMINATION COMPLETE — 7.8s · 4 nodes notified"),
 ]
 
 # ── S3 RHSI feed steps ────────────────────────────────────────────────
 _S3_FEED_STEPS = [
-    (2,  "THREAT",   "Hypersonic threat detected — track initiated"),
+    (2,  "THREAT",   "Unknown threat detected — track initiated"),
     (5,  "RHSI",     "Skupper connector: CCA-swarm-feed — ACQUIRING"),
     (8,  "RHSI",     "Skupper connector: CCA-swarm-feed — 6 feeds FUSED"),
     (11, "RHSI",     "Skupper connector: gnd-radar-track — ACQUIRING"),
     (14, "RHSI",     "Skupper connector: gnd-radar-track — FUSED"),
-    (17, "RHSI",     "Skupper connector: golden-dome-track — CORRELATED"),
+    (17, "RHSI",     "Skupper connector: opir-track — CORRELATED"),
     (19, "AI",       "phi-4-mini: fusing 3 data sources — PROCESSING"),
     (21, "AI",       "phi-4-mini: inference complete — 187ms"),
     (22, "RECOMMEND","BREAK LEFT / 4G / CHAFF × 2 — confidence: 97%"),
