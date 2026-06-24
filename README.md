@@ -133,6 +133,11 @@ Shows a JTAC team's four-operator edge kit maintaining identity and policy auton
 - Operators never lose access — MicroShift RBAC enforces identity locally
 - Token TTL extension is automatic — no manual intervention
 - Policy snapshot cached to disk — survives indefinitely without OCP
+- **Bonus terminal command** — show the immutable image digest and PQC crypto policy on the running VM:
+  ```bash
+  sshpass -p 'redhat' ssh demo@<vm-ip> "bootc status && update-crypto-policies --show"
+  ```
+  `bootc status` shows the cryptographic OCI digest of the running image — every deployed state is a known, signed, auditable artifact, directly supporting RMF/STIG/ATO workflows. `update-crypto-policies` shows ML-KEM is active — quantum-resistant key exchange, relevant for USSF systems with 10-15 year lifespans against harvest-now-decrypt-later attacks.
 
 ### Scenario 3 — F-35 Human-Machine Teaming
 
