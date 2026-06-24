@@ -120,4 +120,4 @@ metadata:
   name: mission-edge
 spec:
   clusterSelector:
-    selectorType: LegacyClusterSetLabel
+    selectorType: ExclusiveClusterSetLabel
