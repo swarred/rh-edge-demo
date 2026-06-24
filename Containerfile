@@ -117,7 +117,7 @@ RUN firewall-offline-cmd --add-port=6443/tcp && \
 # Relevant for USSF/DoD: satellites have 10-15 year lifespans; harvest-now-
 # decrypt-later attacks make PQC a current requirement, not a future one.
 # RHEL 10 makes this the default; here we enable it explicitly on RHEL 9.
-RUN update-crypto-policies --set DEFAULT:MLKEM
+RUN update-crypto-policies --set DEFAULT:PQ
 
 # ── Demo user ─────────────────────────────────────────────────────────
 RUN useradd -m -G wheel demo && \
