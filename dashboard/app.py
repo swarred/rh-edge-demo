@@ -35,7 +35,7 @@ _ANSIBLE_LOCAL = [
     (4,  "ok",      "jtac-ops"),
     (7,  "task",    "enforce_local : set identity-service mode=LOCAL"),
     (9,  "ok",      "jtac-ops"),
-    (12, "task",    "enforce_local : extend operator token TTL to 3600s"),
+    (12, "task",    "enforce_local : extend operator token TTL to 172800s (48h)"),
     (14, "changed", "jtac-ops"),
     (17, "task",    "enforce_local : cache golden-dome-policy snapshot"),
     (19, "ok",      "jtac-ops"),

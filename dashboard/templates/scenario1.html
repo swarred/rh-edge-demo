@@ -364,7 +364,7 @@ function updateOperatorCards(operators) {
   el.innerHTML = operators.map(function(op) {
     var authed = op.authenticated;
     var ttl = op.token_expires_in || 0;
-    var ttlPct = Math.min(100, (ttl / (_mode === 'LOCAL' ? 3600 : 300)) * 100);
+    var ttlPct = Math.min(100, (ttl / (_mode === 'LOCAL' ? 172800 : 300)) * 100);
     var modeTag = op.token_mode === 'LOCAL' ? ' <span class="op-mode-tag local">LOCAL</span>' : '';
 
     return '<div class="op-card' + (authed ? ' authed' : ' pending') + '">' +

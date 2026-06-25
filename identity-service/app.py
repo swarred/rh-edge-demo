@@ -58,7 +58,7 @@ def _load_k8s():
 
 def _token_ttl():
     # Local mode gives longer TTL — operators can work offline longer
-    return 3600 if _mode == "LOCAL" else 300
+    return 172800 if _mode == "LOCAL" else 300
 
 
 def _issue_token(callsign: str) -> dict:
