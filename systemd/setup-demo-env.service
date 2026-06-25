@@ -1,0 +1,16 @@
+[Unit]
+Description=Setup demo shell environment — copy MicroShift kubeconfig for demo user
+After=microshift.service
+Requires=microshift.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/bash -c '\
+    cp /var/lib/microshift/resources/kubeadmin/kubeconfig /home/demo/kubeconfig && \
+    chown demo:demo /home/demo/kubeconfig && \
+    chmod 600 /home/demo/kubeconfig && \
+    KUBECONFIG=/home/demo/kubeconfig kubectl config set-context --current --namespace=jtac-ops'
+
+[Install]
+WantedBy=multi-user.target

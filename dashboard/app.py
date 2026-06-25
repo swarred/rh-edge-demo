@@ -2,6 +2,7 @@ from __future__ import annotations
 import os
 import time
 import threading
+import subprocess
 import urllib.request
 import json
 from flask import Flask, render_template, jsonify, redirect, url_for
@@ -86,6 +87,17 @@ _S3_FEED_STEPS = [
     (21, "AI",       "phi-4-mini: inference complete — 187ms"),
     (22, "RECOMMEND","BREAK LEFT / 4G / CHAFF × 2 — confidence: 97%"),
 ]
+
+
+def _run_playbook(playbook: str) -> None:
+    try:
+        subprocess.Popen(
+            ["ansible-playbook", playbook],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except Exception:
+        pass
 
 
 def _call(path: str) -> dict | None:
@@ -208,6 +220,7 @@ def api_trigger():
             "msg": 'Rule "DDIL Detected" fired — job queued', "level": "info"})
         _state["eda_events"].append({"ts": time.time(), "source": "ANSIBLE",
             "msg": "enforce_local playbook starting on rh-edge-node", "level": "info"})
+    _run_playbook("/opt/ansible/enforce-local.yml")
     try:
         data = json.dumps({"mode": "LOCAL"}).encode()
         urllib.request.urlopen(urllib.request.Request(
@@ -227,6 +240,7 @@ def api_reset():
         _state["link"] = "CONNECTED"
         _state["mode"] = "CLOUD"
         _state["eda_events"] = []
+    _run_playbook("/opt/ansible/push-zta-policy.yml")
     try:
         data = json.dumps({"mode": "CLOUD"}).encode()
         urllib.request.urlopen(urllib.request.Request(

@@ -122,3 +122,12 @@ RUN update-crypto-policies --set DEFAULT:PQ
 # ── Demo user ─────────────────────────────────────────────────────────
 RUN useradd -m -G wheel demo && \
     echo "demo:redhat" | chpasswd
+
+# ── Demo shell environment ────────────────────────────────────────────
+# Auto-copy MicroShift kubeconfig, set oc alias, default to jtac-ops
+COPY systemd/setup-demo-env.service /etc/systemd/system/setup-demo-env.service
+RUN echo '#!/bin/bash' > /etc/profile.d/microshift-demo.sh && \
+    echo 'export KUBECONFIG=/home/demo/kubeconfig' >> /etc/profile.d/microshift-demo.sh && \
+    echo "alias oc='kubectl'" >> /etc/profile.d/microshift-demo.sh && \
+    chmod +x /etc/profile.d/microshift-demo.sh
+RUN systemctl enable setup-demo-env
