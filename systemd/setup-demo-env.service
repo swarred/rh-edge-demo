@@ -10,6 +10,7 @@ ExecStart=/bin/bash -c '\
     cp /var/lib/microshift/resources/kubeadmin/kubeconfig /home/demo/kubeconfig && \
     chown demo:demo /home/demo/kubeconfig && \
     chmod 600 /home/demo/kubeconfig && \
+    KUBECONFIG=/home/demo/kubeconfig kubectl apply -f /etc/microshift/manifests/ && \
     KUBECONFIG=/home/demo/kubeconfig kubectl config set-context --current --namespace=jtac-ops'
 
 [Install]
