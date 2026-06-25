@@ -89,12 +89,26 @@ _S3_FEED_STEPS = [
 ]
 
 
-def _run_playbook(playbook: str) -> None:
+_KUBECTL = ["kubectl", "--kubeconfig=/var/lib/microshift/resources/kubeadmin/kubeconfig"]
+
+
+def _patch_mission_status(link: str, mode: str) -> None:
     try:
         subprocess.Popen(
-            ["ansible-playbook", playbook],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            _KUBECTL + ["patch", "configmap", "mission-status", "-n", "jtac-ops",
+                        "--type=merge", f'-p={{"data":{{"link":"{link}","mode":"{mode}"}}}}'],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+    except Exception:
+        pass
+
+
+def _patch_roe_cache(version: str) -> None:
+    try:
+        subprocess.Popen(
+            _KUBECTL + ["patch", "configmap", "roe-cache", "-n", "jtac-ops",
+                        "--type=merge", f'-p={{"data":{{"version":"{version}"}}}}'],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         )
     except Exception:
         pass
@@ -203,7 +217,7 @@ def api_status_s3():
         "feed_events": feed_events,
         "operators": ops_data.get("operators", []),
         "mode": _state["mode"],
-        "link": _state["link"],
+        "link": "CONNECTED",
     })
 
 
@@ -220,7 +234,7 @@ def api_trigger():
             "msg": 'Rule "DDIL Detected" fired — job queued', "level": "info"})
         _state["eda_events"].append({"ts": time.time(), "source": "ANSIBLE",
             "msg": "enforce_local playbook starting on rh-edge-node", "level": "info"})
-    _run_playbook("/opt/ansible/enforce-local.yml")
+    _patch_mission_status("SEVERED", "LOCAL")
     try:
         data = json.dumps({"mode": "LOCAL"}).encode()
         urllib.request.urlopen(urllib.request.Request(
@@ -240,7 +254,8 @@ def api_reset():
         _state["link"] = "CONNECTED"
         _state["mode"] = "CLOUD"
         _state["eda_events"] = []
-    _run_playbook("/opt/ansible/push-zta-policy.yml")
+    _patch_mission_status("CONNECTED", "CLOUD")
+    _patch_roe_cache("zta-edge-v4")
     try:
         data = json.dumps({"mode": "CLOUD"}).encode()
         urllib.request.urlopen(urllib.request.Request(
