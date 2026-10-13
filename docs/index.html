@@ -50,6 +50,21 @@ nav .nav-links a:hover{color:#fff;text-decoration:none}
 .section.dark .section-intro{color:#999}
 .section.dark h2{color:#fff}
 
+/* TL;DR */
+.tldr{padding:3.5rem 2rem}
+.tldr .blurb{max-width:860px;margin:0 auto 2.25rem;font-size:1.15rem;line-height:1.7;color:var(--rh-dark-gray);text-align:center}
+.tldr .blurb strong{color:var(--rh-black);font-weight:600}
+.tldr-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;max-width:1000px;margin:0 auto}
+.tldr-item{border-radius:10px;padding:1.5rem}
+.tldr-item .tag{display:block;font-size:.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.45rem}
+.tldr-item h3{font-family:'Red Hat Display',sans-serif;font-size:1rem;font-weight:700;margin-bottom:.6rem;color:var(--rh-black)}
+.tldr-item p{font-size:.9rem;line-height:1.6;color:var(--rh-dark-gray)}
+.tldr-item .result{display:block;margin-top:.75rem;font-weight:600;font-size:.88rem}
+.tldr-stack{max-width:1000px;margin:1.75rem auto 0;background:var(--rh-black);border-radius:10px;padding:1.4rem 1.75rem;text-align:center}
+.tldr-stack p{color:#bbb;font-size:.9rem;line-height:1.7}
+.tldr-stack strong{color:#fff;font-weight:600}
+@media(max-width:860px){.tldr-grid{grid-template-columns:1fr}}
+
 /* Scenario tabs (top level) */
 .scenario-tabs{display:flex;gap:0;border-bottom:2px solid #e8e8e8;max-width:980px;margin:0 auto 2.5rem}
 .stab{flex:1;padding:1rem 1.5rem;background:transparent;border:none;border-bottom:4px solid transparent;margin-bottom:-2px;cursor:pointer;font-family:'Red Hat Display',sans-serif;font-weight:700;font-size:.95rem;color:#888;transition:all .2s;text-align:center}
@@ -122,6 +137,7 @@ footer .logo-area{margin-bottom:1.5rem}
       </svg>
     </a>
     <div class="nav-links">
+      <a href="#tldr">TL;DR</a>
       <a href="#data-fabric">Data fabric</a>
       <a href="#scenarios">Scenarios</a>
       <a href="#architecture">Architecture</a>
@@ -148,6 +164,42 @@ footer .logo-area{margin-bottom:1.5rem}
     <div class="sbar-item" style="background:#009E9E" onclick="showScenario('s4')">
       <h4>Scenario 4</h4>
       <p>Multi-Domain Sensor Fusion &middot; Golden Dome</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<!-- TL;DR                                                               -->
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<section class="section tldr" id="tldr">
+  <div class="container">
+    <span class="section-label">TL;DR</span>
+    <h2>The short version</h2>
+    <p class="blurb">One edge architecture &mdash; <strong>RHEL Image Mode, MicroShift, Red Hat Service Interconnect, and OpenShift AI</strong> &mdash; runs unchanged from a JTAC&rsquo;s rucksack to a cluster in polar orbit. Three live mission vignettes prove it: identity that survives a severed link, sub-200ms AI fusion on a pilot&rsquo;s helmet, and a hypersonic track cued to the joint force in under eight seconds. Same platform, same management plane, three domains &mdash; no bespoke stack per mission.</p>
+
+    <div class="tldr-grid">
+      <div class="tldr-item" style="background:#f0f6fd">
+        <span class="tag" style="color:var(--s1)">Scenario 1 &middot; JTAC DDIL</span>
+        <h3>Zero-trust identity continuity</h3>
+        <p>Adversary EW severs all reach-back in contested INDOPACOM territory and central identity goes unreachable. Device Edge keeps issuing and validating credentials locally.</p>
+        <span class="result" style="color:#2a6e2a">48+ hours offline &middot; zero device lockout</span>
+      </div>
+      <div class="tldr-item" style="background:#f5f0ff">
+        <span class="tag" style="color:var(--s3)">Scenario 3 &middot; F-35 wearable edge</span>
+        <h3>Human-machine teaming</h3>
+        <p>A pilot in a high-G merge faces a hypersonic threat. phi-4-mini on-helmet fuses six CCA drones, ground radar, and Golden Dome over RHSI &mdash; the pilot keeps final approval.</p>
+        <span class="result" style="color:#2a6e2a">187ms to maneuver directive &middot; human in the loop</span>
+      </div>
+      <div class="tldr-item" style="background:#f0fffe">
+        <span class="tag" style="color:var(--s4)">Scenario 4 &middot; Golden Dome</span>
+        <h3>Multi-domain sensor fusion</h3>
+        <p>A PWSA satellite detects a hypersonic salvo, triages terabytes onboard, and crosslinks candidate tracks to ODC-01 &mdash; a full OpenShift cluster in orbit &mdash; for fusion and dissemination.</p>
+        <span class="result" style="color:#2a6e2a">7.8 seconds, sensor to four shooters</span>
+      </div>
+    </div>
+
+    <div class="tldr-stack">
+      <p><strong>The common thread:</strong> an immutable, image-based OS at every tier; Kubernetes sized to the hardware, from a wearable to an orbital data center; an application-layer data fabric with mutual TLS that needs no VPN or firewall change; onboard inference where the link cannot be trusted; and one Advanced Cluster Management plane governing the whole fleet.</p>
     </div>
   </div>
 </section>
